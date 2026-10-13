@@ -4,8 +4,9 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "test": "node tests/rules.mjs && node tests/sim.mjs 300",
-    "sim": "node tests/sim.mjs"
+    "test": "node tests/rules.mjs && node tests/sim.mjs 300 && node tests/preload.mjs",
+    "sim": "node tests/sim.mjs",
+    "preload": "node scripts/preload.mjs"
   },
   "version": "1.0.0",
   "description": "*[English](README.md) · Türkçe · [Español](README.es.md)*",

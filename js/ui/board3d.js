@@ -692,7 +692,9 @@ export class Board3D {
     this.zoom = 1;
     const hi = SETTINGS.quality === 'high';
     const r = (this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }));
-    r.setPixelRatio(Math.min(window.devicePixelRatio, hi ? 2 : 1));
+    // 1.5 is plenty on retina screens: the tilt-shift and the pixel style hide the difference, and
+    // it draws 44% fewer pixels than 2 through every post-processing pass
+    r.setPixelRatio(Math.min(window.devicePixelRatio, hi ? 1.5 : 1));
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
     // the sun never moves: the shadow map is redrawn only when something moves (see tick)
@@ -743,7 +745,7 @@ export class Board3D {
     scene.add(new THREE.HemisphereLight('#e9f2ff', '#5b5243', 0.35));
     const sun = (this.sun = new THREE.DirectionalLight('#fff0d8', 3.4));
     sun.castShadow = true;
-    const sm = hi ? 4096 : 2048;
+    const sm = hi ? 2048 : 1024; // soft shadows (radius 2.5): a bigger map only costs more on every update
     sun.shadow.mapSize.set(sm, sm);
     Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 90 });
     sun.shadow.bias = -0.00035;
