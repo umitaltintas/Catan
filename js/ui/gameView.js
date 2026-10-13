@@ -657,7 +657,8 @@ function renderBoard(st, v, locked) {
 }
 
 function renderPlayers(st, v) {
-  const box = clear(ui.els.players);
+  const box = ui.els.players;
+  if (box.children.length !== st.players.length) clear(box);
   box.classList.toggle('compact', st.players.length > 5);
   const acting = new Set(G.pendingActors(st));
   const online = App.isOnline();
@@ -687,17 +688,42 @@ function renderPlayers(st, v) {
     if (g.length) card.append(h('div', { class: 'gainfx' }, g.map(x => x.text).join(' ')));
     const said = (ui.cardEmotes || []).find(x => x.pid === p.id && now - x.at < 3000);
     if (said) card.append(h('div', { class: 'pc-emote' + (ONLY_EMOJI.test(said.e) ? ' big' : ''), style: { animationDelay: `-${now - said.at}ms` } }, said.e));
-    box.append(card);
+    // only the cards that changed are swapped in: rebuilding all of them on every update also
+    // re-pixelized every emoji of every card
+    card._sig = card.outerHTML;
+    const old = box.children[p.id];
+    if (!old) box.append(card);
+    else if (old._sig !== card._sig) old.replaceWith(card);
   }
-  clear(ui.els.bank).append(h('span', null, '🏦'), ...RES.map(r => h('span', { title: TILE_INFO[r].name }, `${TILE_INFO[r].icon}${st.bank[r]}`)), h('span', { title: t('Cartas de desarrollo restantes') }, `🃏${st.devDeck.length}`),
+  sync(ui.els.bank, h('span', null, '🏦'), ...RES.map(r => h('span', { title: TILE_INFO[r].name }, `${TILE_INFO[r].icon}${st.bank[r]}`)), h('span', { title: t('Cartas de desarrollo restantes') }, `🃏${st.devDeck.length}`),
     h('span', { title: t('Meta') }, `🏆 ${st.config.rules.vpTarget}`));
 }
 
+// The log only grows at the end (and drops lines at the top), so instead of rebuilding its 120
+// lines on every update only the new ones are added. Lines are matched by content because the
+// online client gets a fresh state object each time.
 function renderLog(st) {
   const box = ui.els.log;
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-  clear(box);
-  for (const l of st.log.slice(-120)) box.append(h('div', null, rich(l.k ? t(l.k, l.v) : t(l.msg), st.players)));
+  const lines = st.log.slice(-120);
+  const sigs = lines.map(l => l.turn + '|' + (l.k || l.msg) + '|' + (l.v ? JSON.stringify(l.v) : ''));
+  const prev = ui.logSigs || [];
+  // how many old lines fell off the top: the rest of the old list must start the new one
+  let drop = -1;
+  for (let i = 0; i <= prev.length && drop < 0; i++) {
+    const n = prev.length - i;
+    if (n > sigs.length || box.children.length !== prev.length) continue;
+    let same = true;
+    for (let j = 0; j < n && same; j++) same = prev[i + j] === sigs[j];
+    if (same) drop = i;
+  }
+  const line = l => h('div', null, rich(l.k ? t(l.k, l.v) : t(l.msg), st.players));
+  if (drop < 0) clear(box).append(...lines.map(line));
+  else {
+    for (let i = 0; i < drop; i++) box.firstChild.remove();
+    box.append(...lines.slice(prev.length - drop).map(line));
+  }
+  ui.logSigs = sigs;
   if (atBottom || !ui.logInit) box.scrollTop = box.scrollHeight;
   ui.logInit = true;
 }
