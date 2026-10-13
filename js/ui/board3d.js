@@ -240,7 +240,7 @@ async function loadImagePixels(url) {
   const c = document.createElement('canvas');
   c.width = img.width;
   c.height = img.height;
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   g.drawImage(img, 0, 0);
   return { data: g.getImageData(0, 0, img.width, img.height).data, w: img.width, h: img.height, img };
 }
@@ -650,7 +650,38 @@ export class Board3D {
 
   static async create(container) {
     const [kit, tex] = await Promise.all([loadKit(), loadTextures()]);
-    return new Board3D(container, kit, tex);
+    const b = new Board3D(container, kit, tex);
+    b.prewarm();
+    return b;
+  }
+
+  // compile the piece and dice shaders up front: otherwise the first city, robber or roll of the
+  // match freezes the screen for ~100 ms while the GPU compiles them
+  prewarm() {
+    const g = new THREE.Group();
+    const c = { Player: '#888888', Banner: '#888888', PlayerWood: '#888888' };
+    for (const k of ['house', 'city', 'road']) if (this.kit[k]) g.add(tinted(this.kit[k], c));
+    if (this.kit.robber) g.add(this.kit.robber.clone());
+    this.ensureDice();
+    this.scene.add(g);
+    const was = this.diceFx.group.visible;
+    this.diceFx.group.visible = true;
+    const done = () => {
+      this.scene.remove(g);
+      if (this.diceFx) this.diceFx.group.visible = was && !!this.diceFx.throw;
+    };
+    this.renderer.compileAsync(this.scene, this.camera).then(done, done);
+  }
+
+  ensureDice() {
+    if (this.diceFx) return;
+    this.diceFx = new Dice3D(this);
+    // pieces layer: stays sharp under the tilt-shift and gets the see-through outline
+    for (const m of this.diceFx.dice) {
+      m.layers.set(LAYER_PIECES);
+      m.userData.pc = new THREE.Color(m === this.diceFx.dice[0] ? '#f4f4f4' : '#b13e53');
+      m.onBeforeRender = pieceHook;
+    }
   }
 
   constructor(container, kit, tex) {
@@ -663,6 +694,8 @@ export class Board3D {
     r.setPixelRatio(Math.min(window.devicePixelRatio, hi ? 2 : 1));
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
+    // the sun never moves: the shadow map is redrawn only when something moves (see tick)
+    r.shadowMap.autoUpdate = false;
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 0.92;
     r.outputColorSpace = THREE.SRGBColorSpace;
@@ -755,12 +788,25 @@ export class Board3D {
     this.clock = new THREE.Clock();
     this.now = () => performance.now(); // overridable time source (frame-by-frame recording)
     this.alive = true;
+    this.dirty = 2; // frames that must redraw shadows and piece masks
+    this.frameN = 0;
+    this.activeUntil = 0;
+    const wake = () => (this.activeUntil = performance.now() + 1500);
+    // user input only: the menu's slow auto-rotation also fires 'change' and can run at the idle rate
+    for (const ev of ['pointerdown', 'pointermove', 'wheel', 'touchmove']) this.canvas.addEventListener(ev, wake, { passive: true });
     const loop = () => {
       if (!this.alive) return;
       this.raf = requestAnimationFrame(loop);
+      // while nothing happens (only wind, water and bobbing boats) every other frame is enough
+      if (++this.frameN % 2 && !this.busy()) return;
       this.tick();
     };
     loop();
+  }
+
+  // something on screen moves for real: the user, an animation or a camera move
+  busy() {
+    return performance.now() < this.activeUntil || this.dirty > 0 || this.camAnim || this.spawns.length || this.plates.length || (this.pings && this.pings.length) || this.floaters.length || (this.diceFx && this.diceFx.throw);
   }
 
   setupPasses() {
@@ -773,8 +819,8 @@ export class Board3D {
       c.addPass(new RenderPass(this.scene, this.camera));
       if (SETTINGS.ao && SETTINGS.quality === 'high') {
         const ao = new GTAOPass(this.scene, this.camera, w, h);
-        ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.5, thickness: 1.0, scale: 1.2, samples: 12 });
-        ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+        ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.5, thickness: 1.0, scale: 1.2, samples: 8 });
+        ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 8 });
         ao.blendIntensity = 0.9;
         c.addPass(ao);
         this.aoPass = ao;
@@ -813,6 +859,7 @@ export class Board3D {
   }
 
   resize() {
+    this.dirty = 2;
     const w = this.container.clientWidth || 800, h = this.container.clientHeight || 600;
     this.renderer.setSize(w, h, false);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
@@ -891,15 +938,7 @@ export class Board3D {
   // ---------- effects that live on top of the map ----------
   // returns how long the dice fly before they settle
   rollDice(values, at, power = 0) {
-    if (!this.diceFx) {
-      this.diceFx = new Dice3D(this);
-      // pieces layer: stays sharp under the tilt-shift and gets the see-through outline
-      for (const m of this.diceFx.dice) {
-        m.layers.set(LAYER_PIECES);
-        m.userData.pc = new THREE.Color(m === this.diceFx.dice[0] ? '#f4f4f4' : '#b13e53');
-        m.onBeforeRender = pieceHook;
-      }
-    }
+    this.ensureDice();
     this.diceFx.roll(values, at, power);
     this.hasPieces = true;
     return diceFlyMs(power);
@@ -1203,14 +1242,30 @@ export class Board3D {
     this.controls.update();
     this.scaleTokens();
     this.updateFloaters(now);
-    this.renderMasks();
+    // shadows: right away when pieces move, otherwise a few times a second for the bobbing boats
+    const moving = this.dirty > 0 || this.spawns.length || this.plates.length || (this.diceFx && this.diceFx.throw) || (this.pings && this.pings.length);
+    const camKey = this.camKey();
+    const camMoved = camKey !== this.lastCamKey;
+    this.lastCamKey = camKey;
+    if (camMoved || moving) this.renderMasks();
+    // flagged after the mask passes, so the shadow map is drawn by the main render
+    if (moving || this.frameN % 8 === 0) this.renderer.shadowMap.needsUpdate = true;
+    if (this.dirty > 0) this.dirty--;
     this.composer.render();
     this.labels.render(this.scene, this.camera);
     // snap the pixel labels to whole pixels: sub-pixel positions blur the pixel font
-    for (const el of this.labels.domElement.children) {
-      const t = el.style.transform;
-      if (t && t.indexOf('.') >= 0) el.style.transform = t.replace(/(-?\d+\.\d+)px/g, (m, n) => Math.round(+n) + 'px');
+    if (camMoved || moving || this.labels.domElement.childElementCount !== this.nLabels) {
+      this.nLabels = this.labels.domElement.childElementCount;
+      for (const el of this.labels.domElement.children) {
+        const t = el.style.transform;
+        if (t && t.indexOf('.') >= 0) el.style.transform = t.replace(/(-?\d+\.\d+)px/g, (m, n) => Math.round(+n) + 'px');
+      }
     }
+  }
+
+  camKey() {
+    const c = this.camera;
+    return c.matrixWorld.elements.join(',') + c.projectionMatrix.elements[0] + c.projectionMatrix.elements[5] + (this.viewH || 0);
   }
 
   // ---------- build ----------
@@ -1224,6 +1279,7 @@ export class Board3D {
       const first = !this.staticKey;
       this.staticKey = key;
       this.buildStatic(st, faceDown);
+      this.dirty = 2;
       if (first) this.frame();
     }
     if (view.flipAt && view.flipAt !== this.lastFlip) {
@@ -1723,6 +1779,10 @@ export class Board3D {
     const pad = 8;
     const rect = { x: b.minX - pad, z: b.minY - pad, w: b.maxX - b.minX + pad * 2, h: b.maxY - b.minY + pad * 2 };
     U.uFogRect.value.set(rect.x, rect.z, rect.w, rect.h);
+    // the blurred vision mask is costly to redraw on the CPU: only when the vision really changes
+    const fogKey = JSON.stringify([vis.circles, vis.caps, rect]) + this.staticKey;
+    if (fogKey === this.fogKey) return;
+    this.fogKey = fogKey;
     const c = this.fogCanvas, g = c.getContext('2d', { willReadFrequently: true });
     const sx = c.width / rect.w, sz = c.height / rect.h;
     g.filter = 'none';
@@ -1745,9 +1805,12 @@ export class Board3D {
     }
     g.filter = 'none';
     this.fogTex.needsUpdate = true;
+    // one read-back for all the labels: each getImageData waits for the canvas to finish drawing
+    const W = this.fogCanvas.width;
+    const fog = g.getImageData(0, 0, W, this.fogCanvas.height).data;
     const lit = (x, z) => {
-      const px = Math.floor((x - rect.x) * sx), pz = Math.floor((z - rect.z) * sz);
-      return g.getImageData(Math.max(0, Math.min(511, px)), Math.max(0, Math.min(511, pz)), 1, 1).data[0] > 90;
+      const px = Math.max(0, Math.min(W - 1, Math.floor((x - rect.x) * sx))), pz = Math.max(0, Math.min(this.fogCanvas.height - 1, Math.floor((z - rect.z) * sz)));
+      return fog[(pz * W + px) * 4] > 90;
     };
     this.staticGroup.traverse(o => {
       if (o.isCSS2DObject) o.visible = lit(o.position.x, o.position.z);
@@ -1769,6 +1832,7 @@ export class Board3D {
       inter && [inter.kind, inter.color, [...inter.legal].sort((a, b) => a - b)], this.staticKey]);
     if (key === this.dynKey) return;
     this.dynKey = key;
+    this.dirty = 2;
     for (const c of [...this.dynGroup.children]) {
       this.dynGroup.remove(c);
       c.traverse(o => o.isCSS2DObject && o.element.remove());

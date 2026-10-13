@@ -304,7 +304,7 @@ function spriteURL(rows, pal = PAL, sticker = false) {
   const pad = sticker ? 1 : 0, N = 16 + pad * 2;
   const c = document.createElement('canvas');
   c.width = c.height = N;
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   rows.forEach((row, y) => {
     for (let x = 0; x < 16; x++) {
       const ch = row[x];
@@ -337,7 +337,8 @@ function emojiURL(ch) {
   const N = 18;
   const c = document.createElement('canvas');
   c.width = c.height = N;
-  const g = c.getContext('2d');
+  // CPU-backed canvas: reading a GPU one back stalls the frame while the 3D board is drawing
+  const g = c.getContext('2d', { willReadFrequently: true });
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.font = `${N - 3}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
@@ -451,11 +452,19 @@ export function pixelize(root) {
   });
   const nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
+  // read every font size before touching the DOM: reading one after each replacement forces a full
+  // style recalc per emoji (≈100 ms hitches on a busy game screen)
+  const jobs = [];
+  const sizes = new Map();
   for (const node of nodes) {
     const parts = node.nodeValue.split(EMOJI);
     if (parts.length < 2) continue;
+    const el = node.parentNode;
+    if (!sizes.has(el)) sizes.set(el, Math.round(parseFloat(getComputedStyle(el).fontSize) * 1.15) || 18);
+    jobs.push([node, parts, sizes.get(el)]);
+  }
+  for (const [node, parts, size] of jobs) {
     const frag = document.createDocumentFragment();
-    const size = Math.round(parseFloat(getComputedStyle(node.parentNode).fontSize) * 1.15) || 18;
     parts.forEach((p, i) => {
       if (!p) return;
       if (i % 2 === 1) frag.append(pxIcon(p.replace(/️/g, ''), size, p));

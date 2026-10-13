@@ -18,8 +18,6 @@ export default {
   '✏️ Editor de mapas': '✏️ Harita editörü',
   '👀 Ver una partida de bots': '👀 Botların maçını izle',
   '📖 Cómo se juega': '📖 Nasıl oynanır',
-  '🎞️ Tráiler': '🎞️ Fragman',
-  '🎬 Showcase': '🎬 Vitrin',
   'Hecho para jugar con amigos · funciona en PC y móvil · sin instalar nada': 'Arkadaşlarla oynamak için yapıldı · PC ve mobilde çalışır · hiçbir şey kurmaya gerek yok',
   '← Menú': '← Menü',
   '🌐 Jugar con amigos': '🌐 Arkadaşlarla oyna',
