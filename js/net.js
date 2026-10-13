@@ -242,12 +242,6 @@ export class Net {
       const a = msg.action;
       if (!a || ADMIN.has(a.type) || a.pid !== g.seat) return conn.send({ type: 'error', msg: 'Esa acción no es tuya.' });
       if (st.players[g.seat].retired) return conn.send({ type: 'error', msg: 'Te retiraron de la partida.' });
-      if (a.type === 'adhdWin') {
-        // beating the arcade takes minutes: a burst of wins is someone spamming the fireworks
-        const now = Date.now();
-        if (now - (g.cheered || 0) < 15000) return;
-        g.cheered = now;
-      }
       const r = applyAction(st, a);
       if (!r.ok) conn.send({ type: 'error', msg: r.errorKey || r.error, vars: r.errorVars });
       else App.changed();

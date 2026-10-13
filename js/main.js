@@ -120,10 +120,7 @@ function menuScreen(root) {
       h('button', { class: 'btn pink', onclick: () => App.go('online') }, t('🌐 Jugar online con amigos')),
       h('button', { class: 'btn', onclick: () => App.go('editor') }, t('✏️ Editor de mapas')),
       h('button', { class: 'btn', onclick: () => quickBots() }, t('👀 Ver una partida de bots')),
-      h('button', { class: 'btn', onclick: () => showHelp() }, t('📖 Cómo se juega')),
-      h('div', { style: { display: 'flex', gap: '6px' } },
-        h('a', { class: 'btn', href: 'showcase/trailer.html', style: { textDecoration: 'none', flex: 1 } }, t('🎞️ Tráiler')),
-        h('a', { class: 'btn', href: 'showcase/', style: { textDecoration: 'none', flex: 1 } }, t('🎬 Showcase')))),
+      h('button', { class: 'btn', onclick: () => showHelp() }, t('📖 Cómo se juega'))),
     langSwitch(),
     h('div', { class: 'menu-foot' }, t('Hecho para jugar con amigos · funciona en PC y móvil · sin instalar nada'), creditLine())));
   menuDiorama(dio);

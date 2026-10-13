@@ -18,9 +18,9 @@ publicas un fork, te recomendamos **cambiarle el nombre** y no presentarlo como 
 ## Recursos propios
 
 Todo lo que hay en `assets/` (texturas, modelos 3D en `kit.glb`, iconos de recursos), los efectos
-de sonido (sintetizados en tiempo real en `js/ui/sfx.js`) y el material de `showcase/` son
-originales de este proyecto: se generan con los scripts de `tools/blender/` y se distribuyen bajo la
-misma licencia MIT que el código.
+de sonido (sintetizados en tiempo real en `js/ui/sfx.js`) son originales de este proyecto: se
+generaron con scripts de Blender (en el repositorio original) y se distribuyen bajo la misma licencia
+MIT que el código.
 
 ## Software y recursos de terceros
 

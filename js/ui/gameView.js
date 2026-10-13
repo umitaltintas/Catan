@@ -9,7 +9,6 @@ import { play } from './sfx.js';
 import { showHelp } from './help.js';
 import { flagImg } from './flag.js';
 import { iconSet, setIconSet, ICON_SETS, pxIcon, pixelize } from './pixel.js';
-import { mountAdhd, updateAdhd, adhdButton, celebrate, disposeAdhd } from './adhd.js';
 
 let ui = null;
 
@@ -59,7 +58,6 @@ export function gameScreen(root) {
   };
   ui.boardWrap = boardWrap;
   mountBoard(ui);
-  mountAdhd(boardWrap, () => ui && ui.board3d);
   boardWrap.addEventListener('click', e => {
     if (ui.pick && e.target.tagName !== 'CANVAS') {
       ui.pick = null;
@@ -91,7 +89,6 @@ export function gameScreen(root) {
     App.onMeta = null;
     App.onEmote = null;
     App.onPing = null;
-    disposeAdhd();
     document.onpointerdown = null;
     if (ui && ui.emoteBox) ui.emoteBox.remove();
     disposeGameView();
@@ -248,9 +245,6 @@ function handleFx(st) {
         play.win();
         confetti();
         if (host && st.players[f.pid] && st.players[f.pid].kind === 'bot') botEmote(f.pid, ['😎', '🏆', '🎉']);
-        break;
-      case 'cheer':
-        celebrate(f.pid, f.n);
         break;
       case 'flipAll':
         ui.flipAt = Date.now();
@@ -502,7 +496,6 @@ export function render(st) {
   renderActions(st, v, locked);
   renderOffer(st, v, locked);
   renderModal(st, v, locked);
-  updateAdhd(st, locked ? -1 : v, !!ui.els.offer.firstElementChild);
 }
 
 function renderPass(st, v, locked) {
@@ -735,7 +728,6 @@ function fillActions(bar, st, v, locked) {
   ui.bumpRes = null;
   bar.append(h('div', { class: 'hand' }, RES.map(r => resCard(r, p.res[r], bump.has(r)))));
   bar.append(h('button', { class: 'btn emote-toggle', title: t('Reaccionar con un emoji'), onclick: e => { e.stopPropagation(); toggleEmotes(e.currentTarget); } }, '😀'));
-  bar.append(adhdButton());
 
   const playable = new Set(st.current === v ? G.playableDev(st, v) : []);
   const groups = {};

@@ -2,44 +2,16 @@
 
 *English · [Español](README.es.md)*
 
-**A settlers-style board game inspired by Catan that runs in your browser.** Custom maps, game modes the box never had, bots that hate you, online play with friends, a hand-built 3D diorama board with a pixel-art UI, and a gambling-minigame arcade to kill time while everyone else takes their turn (with 100% fake money).
+**A settlers-style board game inspired by Catan that runs in your browser.** Custom maps, game modes the box never had, bots that hate you, online play with friends, a hand-built 3D diorama board with a pixel-art UI.
 
 Free, no ads, no accounts, nothing to install. Works on desktop and mobile.
 
 | | |
 |---|---|
-| 🎮 **Play** | https://kurusudes.github.io/CatanTestFriendos/ |
+| 🎮 **Play** | https://umitaltintas.github.io/Catan/ |
 | 🇹🇷 **Türkçe oyna** | https://umitaltintas.github.io/Catan/?lang=tr |
-| 🎞️ **Trailer (English)** | [Watch in the browser](https://kurusudes.github.io/CatanTestFriendos/showcase/trailer.html?lang=en) · [MP4](showcase/katanittes-trailer-en.mp4) |
-| 🎞️ **Tráiler (español)** | [Ver en el navegador](https://kurusudes.github.io/CatanTestFriendos/showcase/trailer.html) · [MP4](showcase/katanittes-trailer.mp4) |
-| 🎬 **Feature showcase** | [Watch in the browser](https://kurusudes.github.io/CatanTestFriendos/showcase/) · [MP4](showcase/katanittes.mp4) |
 
-[![Katanittes](showcase/poster.jpg)](https://kurusudes.github.io/CatanTestFriendos/showcase/trailer.html?lang=en)
-
-> The in-game interface is available in Spanish and Turkish (language switch on the main menu, or `?lang=tr`). The trailer is available in English and Spanish.
-
----
-
-## The trailer
-
-A 72-second satirical motion-graphics trailer: an epic movie-trailer cold open ("In a world... where your friends steal your sheep..."), a tour of the modes, fake critic reviews and, as the centerpiece, a parody casino ad for the in-game arcade, now with its two new machines (the sheep race and the mine).
-
-![The ADHD arcade, sold like a casino ad](showcase/readme/trailer-casino.gif)
-
-| | | |
-|---|---|---|
-| ![3D diorama](showcase/readme/diorama.jpg) | ![Blindfold mode](showcase/readme/blindfold.jpg) | ![Fog of war](showcase/readme/fog.jpg) |
-| ![The new machines: sheep race and the mine](showcase/readme/adhd-machines.jpg) | ![Reach $1600 and win fireworks](showcase/readme/adhd-ladder.jpg) | ![What critics say](showcase/readme/reviews.jpg) |
-
-Like the showcase, the trailer is a live web page: every frame is a pure function of the clock, including the real 3D board and real bot games, so the same page plays in the browser or is recorded frame by frame into the MP4. The chiptune soundtrack and sound effects are synthesized in code and timed to the scenes.
-
----
-
-## Screenshots
-
-| Main menu | A game in progress |
-|---|---|
-| ![Main menu](showcase/readme/menu.jpg) | ![A game in progress](showcase/readme/in-game.jpg) |
+> The in-game interface is available in Spanish and Turkish (language switch on the main menu, or `?lang=tr`).
 
 ---
 
@@ -80,22 +52,9 @@ Victory points, hand limit, setup rounds, starting bonus, pieces per player, dev
 - If the host drops, they can **reopen the room** with the same code and carry on.
 - **Reactions:** emoji balloons rise from all of your buildings, and a middle click drops a marker on the map that everyone sees.
 
-### The ADHD arcade
-A small window of gambling minigames for while you wait for your turn, with **fake money**:
-- Six machines, unlocked one after another as your balance grows ($150, $250, $400, $650, $1000):
-  - **Plinko**, **slots** and **coin flip** (double or nothing).
-  - **Sheep race:** bet on one of four sheep; the favourite pays x2.6, the long shot x10.
-  - **The mine:** 16 rocks, 3 of them hide the robber. Every ore you dig raises the payout; cash out before you find him.
-  - **Rocket:** cash out before it blows up; it can reach x10, but almost never does, and after you cash out a ghost rocket shows how far it would have gone.
-- Machines you've already beaten get an **Auto** button (all but the mine and the rocket).
-- Reach **$1600** and fireworks burst from your houses, with a banner every player sees (winners who land together get their banners one after another).
-- Every win of the match adds **gold trims** to your pieces, up to 5: beams, road edges and studs, windows, a gold knob on the roof and finally a shine.
-- When it's your turn (or a trade offer is up) it **turns see-through and ignores clicks** until you're done, so you can always see the game behind it and never play the arcade by accident.
-
 ### Board and interface
 - **3D diorama board** built with three.js: one continuous terrain blending 8 PBR textures, a physical sky with image-based lighting, water with depth-based foam, grass and wheat swaying in the wind, cloud shadows, ambient occlusion and a tilt-shift camera.
 - **Tile variants:** every resource has several looks (pine hill, woodcutter's clearing, round sheep pen, mill on a knoll, clay pit, brickworks, snowy peak, quarry...), picked per tile so every player sees the same map.
-- Props and resource icons are modelled in **Blender** and generated by scripts in `tools/blender/` (icons are 3D models rendered through a pixel camera).
 - **Top view** button: the camera goes straight down onto the map, like a flat plan. Number tokens and port signs shrink as you zoom out, so they never cover the tiles.
 - A **dice history** in the top right corner of the map: the last rolls, newest first, in the colour of whoever threw them.
 - **Pixel-art UI** with animated dice you can charge (hold the button to throw harder), **cards that fly** from the tiles to your hand, between players when trading and to and from the bank, and a sound effects set synthesized in the browser.
@@ -116,17 +75,15 @@ A small window of gambling minigames for while you wait for your turn, with **fa
 | Online | `js/net.js` | Rooms, host-authoritative sync, reconnection, voting |
 | Game screen | `js/ui/gameView.js` | Cards, hand, actions, dice, trading, flying cards |
 | 3D board | `js/ui/board3d.js`, `dice3d.js`, `flag.js` | Terrain, tile variants, pieces, fog, 3D dice, flags |
-| ADHD arcade | `js/ui/adhd.js` | The six minigames, balance, unlocks, fireworks |
-| Other UI | `js/ui/lobby.js`, `editor.js`, `pixel.js`, `sfx.js`, `help.js` | Lobby and rooms, map editor, pixel sprites, sounds, help |
+| Other UI | `js/ui/lobby.js`, `editor.js`, `pixel.js`, `sfx.js`, `help.js`, `js/i18n.js` | Lobby and rooms, map editor, pixel sprites, sounds, help |
 | Styles | `css/style.css`, `css/pixel.css` | Pixel theme (Sweetie-16 palette) |
-| Assets | `assets/`, `tools/blender/` | Textures, `kit.glb` models and icons, and the Blender scripts that make them |
-| Videos | `showcase/` | Showcase and trailer pages (`trailer.html?lang=en`), shared animation helpers in `motion.js` |
+| Assets | `assets/` | Textures, `kit.glb` models and icons |
 | Tests | `tests/` | Rules tests plus hundreds of bot-vs-bot games with invariant checks |
 
 ## Running it locally
 
 ```bash
-py -m http.server 8123
+python3 -m http.server 8123
 # then open http://localhost:8123/
 ```
 

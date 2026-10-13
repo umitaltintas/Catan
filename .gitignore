@@ -1,9 +1,3 @@
 node_modules/
-.claude/*
-!.claude/commands/
-!.claude/hooks/
-!.claude/settings.json
-CatanVault/.obsidian/*
-!CatanVault/.obsidian/app.json
 *.log
-showcase/frames/
+.claude/

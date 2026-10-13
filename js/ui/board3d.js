@@ -293,55 +293,6 @@ function tinted(src, colors) {
   return o;
 }
 
-// ---------- gold trims: every ADHD win of the match gilds a bit more of that player's pieces ----------
-// 1 beams · 2 road edges and studs · 3 windows, chimney and plinth · 4 a gold knob on the roof · 5 the gold shines
-const GOLD = new THREE.Color('#ffc94a');
-const goldCache = new Map();
-const goldGlow = new Set(); // level-5 gold: its shine pulses (see tick)
-function goldOf(mt, glow) {
-  const key = mt.uuid + (glow ? 'G' : 'g');
-  if (!goldCache.has(key)) {
-    const n = mt.clone();
-    n.color = GOLD.clone();
-    n.map = null;
-    n.metalness = 0.75;
-    n.roughness = 0.28;
-    n.transparent = false;
-    n.opacity = 1;
-    // a little light of its own, so the gold still reads as gold in the shade
-    n.emissive = new THREE.Color('#ffb84a');
-    n.emissiveIntensity = mt.name === 'Glass' ? 0.6 : 0.22;
-    n.userData.patched = false;
-    patch(n, { key: 'gold' });
-    if (glow) goldGlow.add(n);
-    goldCache.set(key, n);
-  }
-  return goldCache.get(key);
-}
-function gild(o, names, glow) {
-  if (!names.length) return o;
-  o.traverse(m => {
-    if (!m.isMesh) return;
-    const swap = mt => (names.includes(mt.name) ? goldOf(mt, glow) : mt);
-    m.material = Array.isArray(m.material) ? m.material.map(swap) : swap(m.material);
-  });
-  return o;
-}
-const KNOB_HOUSE = [0, 0.27, 0], KNOB_CITY = [0, 0.57, 0]; // on top of the roof, in model units
-const KNOB_GEO = new THREE.SphereGeometry(0.024, 12, 8);
-const KNOB_STEM = new THREE.CylinderGeometry(0.006, 0.01, 0.04, 8).translate(0, -0.02, 0);
-let knobBase = null;
-function goldKnob(x, y, z, glow) {
-  knobBase = knobBase || new THREE.MeshStandardMaterial({ name: 'Knob' });
-  const mat = goldOf(knobBase, glow);
-  const g = new THREE.Group();
-  const ball = new THREE.Mesh(KNOB_GEO, mat), stem = new THREE.Mesh(KNOB_STEM, mat);
-  ball.castShadow = stem.castShadow = true;
-  g.add(ball, stem);
-  g.position.set(x, y, z);
-  return g;
-}
-
 // ---------- kingdom banners waving on every building ----------
 const JOINT_CYL = new THREE.CylinderGeometry(1, 1, 1, 20);
 const JOINT_BOX = new THREE.BoxGeometry(1, 1, 1);
@@ -1248,10 +1199,6 @@ export class Board3D {
     const rt = this.robberTile, ru = U.uRobber.value;
     if (rt && (rt.x !== ru.x || rt.y !== ru.y)) ru.set(rt.x, rt.y, 0);
     ru.z += ((rt ? 1 : 0) - ru.z) * 0.06;
-    if (goldGlow.size) {
-      const shine = 0.22 + 0.4 * Math.max(0, Math.sin(t * 2.4)) ** 3;
-      for (const m of goldGlow) m.emissiveIntensity = shine;
-    }
     this.updateCamAnim(now);
     this.controls.update();
     this.scaleTokens();
@@ -1733,17 +1680,8 @@ export class Board3D {
   // the winning numbers blink green for a few seconds (the CSS animation ends by itself).
   // Never animate `transform` on these labels: CSS2DRenderer positions them with it.
   // the road model's own materials (textured bed + tinted planks) for the joints
-  jointMats(color, gold = 0) {
+  jointMats(color) {
     this.jm = this.jm || new Map();
-    if (gold) {
-      // gold road edges: the bed under the planks turns gold (and shines at level 5)
-      const key = color + '|' + gold;
-      if (!this.jm.has(key)) {
-        const m = this.jointMats(color);
-        this.jm.set(key, { top: m.top, bed: goldOf(m.bed, gold >= 5) });
-      }
-      return this.jm.get(key);
-    }
     if (!this.jm.has(color)) {
       const mats = {};
       tinted(this.kit.road, { Player: color, Banner: color, PlayerWood: color }).traverse(m => {
@@ -1816,10 +1754,7 @@ export class Board3D {
     });
   }
 
-  // how gilded a player's pieces are: their ADHD wins this match, up to 5
-  goldLevel(p) {
-    return p ? Math.min(5, p.adhdWins || 0) : 0;
-  }
+
 
   buildDynamic(st, view) {
     const bd = st.board;
@@ -1830,7 +1765,7 @@ export class Board3D {
     this.inter = inter;
     const robberOn = bd.robber >= 0 && !st.config.rules.noRobber && bd.tiles[bd.robber].revealed && !bd.robberHidden;
     this.robberTile = robberOn && bd.tiles[bd.robber].res !== 'desert' ? bd.tiles[bd.robber] : null;
-    const key = JSON.stringify([st.roads, st.buildings, robberOn && bd.robber, view.blindOwn || [], st.players.map(p => p.color + (p.flag || '').length + '|' + this.goldLevel(p)),
+    const key = JSON.stringify([st.roads, st.buildings, robberOn && bd.robber, view.blindOwn || [], st.players.map(p => p.color + (p.flag || '').length),
       inter && [inter.kind, inter.color, [...inter.legal].sort((a, b) => a - b)], this.staticKey]);
     if (key === this.dynKey) return;
     this.dynKey = key;
@@ -1868,8 +1803,7 @@ export class Board3D {
     const colors = c => ({ Player: c, Banner: c, PlayerWood: c });
     const road = (eid, color, ghost) => {
       const E = bd.edges[eid], a = bd.vertices[E.a], b = bd.vertices[E.b];
-      const lv = ghost ? 0 : this.goldLevel(st.players[st.roads[eid]]);
-      const o = gild(tinted(kit.road, colors(color)), lv >= 2 ? ['Wood'] : [], lv >= 5);
+      const o = tinted(kit.road, colors(color));
       const ya = vy(E.a), yb = vy(E.b);
       const len = Math.hypot(b.x - a.x, b.y - a.y);
       o.position.set((a.x + b.x) / 2, (ya + yb) / 2 + 0.01, (a.y + b.y) / 2);
@@ -1896,8 +1830,7 @@ export class Board3D {
     for (const [key, others] of ends) {
       const [vid, owner] = key.split(':').map(Number);
       const color = st.players[owner].color;
-      const lv = this.goldLevel(st.players[owner]);
-      const m = this.jointMats(color, lv >= 2 ? lv : 0);
+      const m = this.jointMats(color);
       const V = bd.vertices[vid], y0 = vy(vid);
       const g = new THREE.Group();
       g.position.set(V.x, y0 + 0.01 + owner * 0.002, V.y);
@@ -1910,7 +1843,6 @@ export class Board3D {
       };
       part(g, JOINT_CYL, 0.085, 0.057, 0.085, 0, 0.0285, m.bed);
       part(g, JOINT_CYL, 0.1, 0.024, 0.1, 0, 0.078, m.top);
-      if (lv >= 2) part(g, JOINT_CYL, 0.055, 0.014, 0.055, 0, 0.096, m.bed); // a gold stud on the joint
       for (const o of others) {
         const O = bd.vertices[o];
         const dx = O.x - V.x, dz = O.y - V.y, len = Math.hypot(dx, dz);
@@ -1926,10 +1858,7 @@ export class Board3D {
     }
     const building = (vid, owner, type, ghost) => {
       const V = bd.vertices[vid];
-      const lv = ghost ? 0 : this.goldLevel(st.players[owner]);
-      const trims = [...(lv >= 1 ? ['Timber'] : []), ...(lv >= 3 ? ['Glass', 'StoneDark'] : [])];
-      const o = gild(tinted(type === 'city' ? kit.city : kit.house, colors(st.players[owner].color)), trims, lv >= 5);
-      if (lv >= 4) o.add(type === 'city' ? goldKnob(KNOB_CITY[0], KNOB_CITY[1], KNOB_CITY[2], lv >= 5) : goldKnob(KNOB_HOUSE[0], KNOB_HOUSE[1], KNOB_HOUSE[2], lv >= 5));
+      const o = tinted(type === 'city' ? kit.city : kit.house, colors(st.players[owner].color));
       o.position.set(V.x, vy(vid) - 0.01, V.y);
       o.rotation.y = ((vid * 2.39996) % 6.28) * 0.4;
       const pl = st.players[owner];
