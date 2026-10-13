@@ -116,7 +116,7 @@ export function createGame(configIn) {
   }
   s.setup = { queue, idx: 0, step: 'settlement', lastVid: null, blindActive: !!M.blindfold, lastRound: R.setupRounds - 1, fixing: false };
   s.current = queue[0].pid;
-  log(s, `¡Empieza la partida! Mapa: ${board.tiles.length} hexágonos.`);
+  log(s, '¡Empieza la partida! Mapa: {n} hexágonos.', -1, { n: board.tiles.length });
   if (M.flipped) log(s, '🔄 Tablero volteado: coloca tus casas sin saber qué hay debajo.');
   if (M.blindfold) log(s, '🤫 Casas secretas: nadie ve dónde pones hasta la revelación.');
   if (M.fog) log(s, '🌑 Niebla de guerra: solo ves lo que rodea a tus piezas.');
@@ -398,7 +398,7 @@ function updateLongestRoad(s) {
   }
   if (owner !== cur) {
     if (owner >= 0) {
-      log(s, `🛣️ @${owner} consigue el Camino más largo (${max}).`, owner);
+      log(s, '🛣️ @{pid} consigue el Camino más largo ({n}).', owner, { pid: owner, n: max });
       s.fx.push({ kind: 'award', what: 'road', pid: owner });
     } else log(s, '🛣️ Nadie tiene el Camino más largo ahora.');
   }
@@ -410,7 +410,7 @@ function updateLargestArmy(s, pid) {
   const la = s.largestArmy;
   if (p.knights >= 3 && la.owner !== pid && p.knights > la.count) {
     s.largestArmy = { owner: pid, count: p.knights };
-    log(s, `⚔️ @${pid} consigue el Ejército más grande (${p.knights}).`, pid);
+    log(s, '⚔️ @{pid} consigue el Ejército más grande ({n}).', pid, { pid, n: p.knights });
     s.fx.push({ kind: 'award', what: 'army', pid });
   } else if (la.owner === pid) la.count = p.knights;
 }
@@ -422,7 +422,7 @@ function checkWin(s) {
     s.winner = s.current;
     s.phase = 'gameOver';
     s.trade = null;
-    log(s, `🏆 ¡@${s.current} gana la partida con ${vp} puntos!`, s.current);
+    log(s, '🏆 ¡@{pid} gana la partida con {vp} puntos!', s.current, { pid: s.current, vp });
     s.fx.push({ kind: 'win', pid: s.current });
   }
 }
@@ -474,7 +474,7 @@ function produce(s, sum) {
     const total = receivers.reduce((a, i) => a + gains[i][r], 0);
     if (!total) continue;
     if (total > s.bank[r] && receivers.length > 1) {
-      log(s, `🏦 El banco no tiene suficiente ${resName(r)}: nadie lo recibe.`);
+      log(s, '🏦 El banco no tiene suficiente {r}: nadie lo recibe.', -1, { r: resName(r) });
       continue;
     }
     for (const i of receivers) {
@@ -587,8 +587,10 @@ function startRound(s) {
       break;
     }
   }
-  const extra = E.res ? ` (${resName(E.res)})` : E.pid != null ? ` (@${E.pid})` : '';
-  log(s, `${E.icon} Evento de la ronda ${s.round}: ${E.name}${extra}.`);
+  const ev0 = { icon: E.icon, round: s.round, ev: E.id };
+  if (E.res) log(s, '{icon} Evento de la ronda {round}: {ev|event} ({r}).', -1, { ...ev0, r: resName(E.res) });
+  else if (E.pid != null) log(s, '{icon} Evento de la ronda {round}: {ev|event} (@{pid}).', -1, { ...ev0, pid: E.pid });
+  else log(s, '{icon} Evento de la ronda {round}: {ev|event}.', -1, ev0);
   s.fx.push({ kind: 'event', event: E });
 }
 
@@ -611,7 +613,7 @@ function beginTurns(s) {
   s.round = 1;
   s.setup.blindActive = false;
   updateLongestRoad(s);
-  log(s, `🎲 Turno de @${s.current}.`, s.current);
+  log(s, '🎲 Turno de @{pid}.', s.current, { pid: s.current });
   startRound(s);
 }
 
@@ -664,7 +666,7 @@ function resolveBlind(s) {
       else p.settlementsLeft++;
       if (b.eid != null) p.roadsLeft++;
       fix.push({ pid: b.pid, round: b.round });
-      log(s, `💥 ¡Choque! La casa secreta de @${b.pid} coincidía con otra. Debe reubicarla.`, b.pid);
+      log(s, '💥 ¡Choque! La casa secreta de @{pid} coincidía con otra. Debe reubicarla.', b.pid, { pid: b.pid });
     }
   }
   s.fx.push({ kind: 'blindReveal', placements: s.blind.map(b => ({ pid: b.pid, vid: b.vid, eid: b.eid, ok: accepted.includes(b) })) });
@@ -675,7 +677,7 @@ function resolveBlind(s) {
       else setupResources(s, b.pid, b.vid);
     }
   }
-  log(s, `🙈 ¡Revelación! Todas las casas iniciales ya son visibles.`);
+  log(s, '🙈 ¡Revelación! Todas las casas iniciales ya son visibles.');
   s.blind = [];
   if (fix.length) {
     st.queue = fix;
@@ -752,11 +754,11 @@ function fogResolve(s, a, kind, okReal, okKnown, key) {
   const to = nearest(s, kind, a[key], okReal);
   if (to === null) {
     s.fx.push({ kind: 'blocked', pid: a.pid, what: kind, at: a[key] });
-    log(s, `🌑 @${a.pid} tropezó con alguien en la niebla y no pudo construir.`, a.pid);
+    log(s, '🌑 @{pid} tropezó con alguien en la niebla y no pudo construir.', a.pid, { pid: a.pid });
     throw new Blocked();
   }
   s.fx.push({ kind: 'relocated', pid: a.pid, what: kind, from: a[key], to });
-  log(s, `🌑 ¡Había alguien en la niebla! La pieza de @${a.pid} se desvió.`, a.pid);
+  log(s, '🌑 ¡Había alguien en la niebla! La pieza de @{pid} se desvió.', a.pid, { pid: a.pid });
   return { ...a, [key]: to };
 }
 
@@ -782,7 +784,8 @@ H.placeSettlement = (s, a) => {
   st.step = 'road';
   if (st.blindActive) {
     s.blind.push({ pid: a.pid, vid: a.vid, eid: null, round: entry.round, type });
-    log(s, `🙈 @${a.pid} colocó su ${isCity ? 'ciudad' : 'poblado'} en secreto.`, a.pid);
+    if (isCity) log(s, '🙈 @{pid} colocó su ciudad en secreto.', a.pid, { pid: a.pid });
+    else log(s, '🙈 @{pid} colocó su poblado en secreto.', a.pid, { pid: a.pid });
   } else {
     s.buildings[a.vid] = { owner: a.pid, type };
     revealAround(s, a.vid);
@@ -791,7 +794,8 @@ H.placeSettlement = (s, a) => {
       if (s.config.modes.flipped) (st.pendingRes = st.pendingRes || []).push([a.pid, a.vid]);
       else setupResources(s, a.pid, a.vid);
     }
-    log(s, `🏠 @${a.pid} coloca ${isCity ? 'una ciudad' : 'un poblado'}.`, a.pid);
+    if (isCity) log(s, '🏠 @{pid} coloca una ciudad.', a.pid, { pid: a.pid });
+    else log(s, '🏠 @{pid} coloca un poblado.', a.pid, { pid: a.pid });
   }
   s.fx.push({ kind: 'build', what: type, pid: a.pid, at: a.vid, hidden: st.blindActive });
 };
@@ -831,7 +835,7 @@ H.roll = (s, a) => {
   // how hard the dice were thrown (hold the button to charge it): only changes the animation
   const power = Math.round(Math.min(1, Math.max(0, +a.power || 0)) * 100) / 100;
   s.fx.push({ kind: 'dice', dice: d, power });
-  log(s, `🎲 @${a.pid} saca ${sum}.`, a.pid);
+  log(s, '🎲 @{pid} saca {n}.', a.pid, { pid: a.pid, n: sum });
   if (sum !== 7) {
     produce(s, sum);
     s.phase = 'main';
@@ -869,7 +873,7 @@ H.discard = (s, a) => {
   p.stats.lost += need;
   s.fx.push({ kind: 'discard', pid: a.pid, res: Object.fromEntries(RES.map(r => [r, res[r] || 0])) });
   delete s.pendingDiscards[a.pid];
-  log(s, `🗑️ @${a.pid} descarta ${need} cartas.`, a.pid);
+  log(s, '🗑️ @{pid} descarta {n} cartas.', a.pid, { pid: a.pid, n: need });
   if (!Object.keys(s.pendingDiscards).length) s.phase = s.config.rules.noRobber ? 'main' : 'robber';
 };
 
@@ -887,18 +891,21 @@ H.moveRobber = (s, a) => {
   if (!victims.length) victim = null;
   s.board.robber = a.tile;
   s.fx.push({ kind: 'robber', tile: a.tile });
-  log(s, `🦹 @${a.pid} mueve el ladrón.`, a.pid);
+  log(s, '🦹 @{pid} mueve el ladrón.', a.pid, { pid: a.pid });
   if (victim != null) {
     const r = stealRandom(s, victim, a.pid);
     s.fx.push({ kind: 'steal', from: victim, to: a.pid, res: r });
-    log(s, `🫳 @${a.pid} le roba una carta a @${victim}.`, a.pid);
+    log(s, '🫳 @{pid} le roba una carta a @{victim}.', a.pid, { pid: a.pid, victim });
   }
   s.phase = s.robberReturn;
 };
 
 function assertMain(s, a) {
   if (a.pid !== s.current) fail('No es tu turno.');
-  if (s.phase !== 'main') fail(s.phase === 'roll' ? 'Primero tira los dados.' : 'Termina la acción pendiente.');
+  if (s.phase !== 'main') {
+    if (s.phase === 'roll') fail('Primero tira los dados.');
+    fail('Termina la acción pendiente.');
+  }
 }
 
 H.build = (s, a) => {
@@ -917,7 +924,8 @@ H.build = (s, a) => {
     const E = s.board.edges[a.at];
     revealAround(s, E.a);
     revealAround(s, E.b);
-    log(s, `🛤️ @${a.pid} construye un camino${free ? ' gratis' : ''}.`, a.pid);
+    if (free) log(s, '🛤️ @{pid} construye un camino gratis.', a.pid, { pid: a.pid });
+    else log(s, '🛤️ @{pid} construye un camino.', a.pid, { pid: a.pid });
     if (free) {
       s.freeRoads--;
       if (s.freeRoads <= 0 || p.roadsLeft <= 0 || !legalRoads(s, a.pid).length) s.phase = 'main';
@@ -931,7 +939,7 @@ H.build = (s, a) => {
     p.settlementsLeft--;
     s.buildings[a.at] = { owner: a.pid, type: 'settlement' };
     revealAround(s, a.at);
-    log(s, `🏠 @${a.pid} construye un poblado.`, a.pid);
+    log(s, '🏠 @{pid} construye un poblado.', a.pid, { pid: a.pid });
   } else if (a.what === 'city') {
     if (p.citiesLeft <= 0) fail('No te quedan ciudades.');
     if (!canBuildCity(s, a.pid, a.at)) fail('Solo puedes mejorar tus poblados.');
@@ -940,7 +948,7 @@ H.build = (s, a) => {
     p.citiesLeft--;
     p.settlementsLeft++;
     s.buildings[a.at].type = 'city';
-    log(s, `🏰 @${a.pid} mejora a ciudad.`, a.pid);
+    log(s, '🏰 @{pid} mejora a ciudad.', a.pid, { pid: a.pid });
   } else fail('Construcción desconocida.');
   s.fx.push({ kind: 'build', what: a.what, pid: a.pid, at: a.at });
   if (a.what !== 'city') updateLongestRoad(s);
@@ -961,7 +969,7 @@ H.buyDev = (s, a) => {
   const type = s.devDeck.pop();
   p.dev.push({ type, turn: s.turn });
   s.fx.push({ kind: 'devBought', pid: a.pid, type });
-  log(s, `🃏 @${a.pid} compra una carta de desarrollo.`, a.pid);
+  log(s, '🃏 @{pid} compra una carta de desarrollo.', a.pid, { pid: a.pid });
 };
 
 H.playDev = (s, a) => {
@@ -981,7 +989,7 @@ H.playDev = (s, a) => {
   p.dev.splice(idx, 1);
   s.devPlayed = true;
   s.fx.push({ kind: 'devPlayed', pid: a.pid, card: a.card });
-  log(s, `${DEV_INFO[a.card].icon} @${a.pid} juega ${DEV_INFO[a.card].name}.`, a.pid);
+  log(s, '{icon} @{pid} juega {card|dev}.', a.pid, { icon: DEV_INFO[a.card].icon, pid: a.pid, card: a.card });
   switch (a.card) {
     case 'knight':
       p.knights++;
@@ -1010,7 +1018,7 @@ H.playDev = (s, a) => {
       }
       p.res[a.res] += got;
       s.fx.push({ kind: 'monopoly', pid: a.pid, res: a.res, from });
-      log(s, `👑 @${a.pid} se lleva ${got} ${resName(a.res)}.`, a.pid);
+      log(s, '👑 @{pid} se lleva {n} {r}.', a.pid, { pid: a.pid, n: got, r: resName(a.res) });
       break;
     }
   }
@@ -1028,7 +1036,7 @@ H.bankTrade = (s, a) => {
   p.res[a.get]++;
   s.bank[a.get]--;
   s.fx.push({ kind: 'bankTrade', pid: a.pid, give: a.give, n: ratio, get: a.get });
-  log(s, `🏦 @${a.pid} cambia ${ratio}${resName(a.give)} por 1${resName(a.get)}.`, a.pid);
+  log(s, '🏦 @{pid} cambia {n}{give} por 1{get}.', a.pid, { pid: a.pid, n: ratio, give: resName(a.give), get: resName(a.get) });
 };
 
 const validOffer = o => o && RES.every(r => Number.isInteger(o[r] || 0) && (o[r] || 0) >= 0);
@@ -1051,7 +1059,7 @@ H.proposeTrade = (s, a) => {
   if (p.tradeTurn !== s.turn) p.tradeTurn = s.turn, p.tradeCount = 0;
   p.tradeCount++;
   s.trade = { id: ++s.tradeSeq, from: a.pid, give, get, to, responses: Object.fromEntries(to.map(i => [i, null])) };
-  log(s, `🤝 @${a.pid} ofrece un intercambio.`, a.pid);
+  log(s, '🤝 @{pid} ofrece un intercambio.', a.pid, { pid: a.pid });
 };
 
 H.respondTrade = (s, a) => {
@@ -1077,7 +1085,7 @@ H.confirmTrade = (s, a) => {
   }
   s.trade = null;
   s.fx.push({ kind: 'trade', a: a.pid, b: a.with, give: t.give, get: t.get });
-  log(s, `🤝 @${a.pid} y @${a.with} intercambian.`, a.pid);
+  log(s, '🤝 @{pid} y @{with} intercambian.', a.pid, { pid: a.pid, with: a.with });
 };
 
 H.cancelTrade = (s, a) => {
@@ -1109,7 +1117,7 @@ function advanceTurn(s) {
     s.event = null;
     startRound(s);
   }
-  log(s, `🎲 Turno de @${s.current}.`, s.current);
+  log(s, '🎲 Turno de @{pid}.', s.current, { pid: s.current });
 }
 
 H.endTurn = (s, a) => {
@@ -1125,7 +1133,8 @@ H.setController = (s, a) => {
   if (p.kind === a.kind) return;
   p.kind = a.kind;
   if (a.kind === 'bot') p.level = p.level || 'normal';
-  log(s, a.kind === 'bot' ? `🤖 Un bot toma el control de @${a.pid}.` : `👋 @${a.pid} vuelve a tomar el control.`, a.pid);
+  if (a.kind === 'bot') log(s, '🤖 Un bot toma el control de @{pid}.', a.pid, { pid: a.pid });
+  else log(s, '👋 @{pid} vuelve a tomar el control.', a.pid, { pid: a.pid });
   s.fx.push({ kind: 'controller', pid: a.pid, to: a.kind });
 };
 
@@ -1165,7 +1174,7 @@ H.retirePlayer = (s, a) => {
     s.largestArmy = top.length === 1 ? { owner: top[0].id, count: max } : { owner: -1, count: 0 };
   }
   updateLongestRoad(s);
-  log(s, `🚪 @${pid} se retira de la partida.`, pid);
+  log(s, '🚪 @{pid} se retira de la partida.', pid, { pid });
   s.fx.push({ kind: 'retired', pid });
   // keep the game flowing
   delete s.pendingDiscards[pid];

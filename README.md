@@ -9,13 +9,14 @@ Free, no ads, no accounts, nothing to install. Works on desktop and mobile.
 | | |
 |---|---|
 | 🎮 **Play** | https://kurusudes.github.io/CatanTestFriendos/ |
+| 🇹🇷 **Türkçe oyna** | https://umitaltintas.github.io/Catan/?lang=tr |
 | 🎞️ **Trailer (English)** | [Watch in the browser](https://kurusudes.github.io/CatanTestFriendos/showcase/trailer.html?lang=en) · [MP4](showcase/katanittes-trailer-en.mp4) |
 | 🎞️ **Tráiler (español)** | [Ver en el navegador](https://kurusudes.github.io/CatanTestFriendos/showcase/trailer.html) · [MP4](showcase/katanittes-trailer.mp4) |
 | 🎬 **Feature showcase** | [Watch in the browser](https://kurusudes.github.io/CatanTestFriendos/showcase/) · [MP4](showcase/katanittes.mp4) |
 
 [![Katanittes](showcase/poster.jpg)](https://kurusudes.github.io/CatanTestFriendos/showcase/trailer.html?lang=en)
 
-> The in-game interface is in Spanish. The trailer is available in English and Spanish.
+> The in-game interface is available in Spanish and Turkish (language switch on the main menu, or `?lang=tr`). The trailer is available in English and Spanish.
 
 ---
 

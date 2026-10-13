@@ -1,3 +1,23 @@
 // Türkçe: flag
 export default {
+  'bandera': 'bayrak',
+  'Tu reino': 'Krallığın',
+  'Otro color': 'Başka renk',
+  'Lápiz': 'Kalem',
+  'Borrador': 'Silgi',
+  'Balde': 'Boya kovası',
+  'Línea': 'Çizgi',
+  'Rectángulo': 'Dikdörtgen',
+  'Círculo': 'Daire',
+  'Deshacer': 'Geri al',
+  'Rehacer': 'Yinele',
+  'Color actual': 'Şu anki renk',
+  '🗑️ Limpiar': '🗑️ Temizle',
+  '🎲 Plantilla': '🎲 Şablon',
+  '🏰 {title}: {name}': '🏰 {title}: {name}',
+  '🏰 {title}': '🏰 {title}',
+  'Color de tu castillo': 'Kalenin rengi',
+  'Así se verá': 'Böyle görünecek',
+  'Cancelar': 'İptal',
+  '✅ Guardar reino': '✅ Krallığı kaydet',
 };

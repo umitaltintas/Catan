@@ -1,3 +1,25 @@
-// Türkçe: engine-board
+// Türkçe: engine-board (harita şekilleri)
 export default {
+  'Clásico': 'Klasik',
+  'El tablero de siempre: 19 hexágonos.': 'Bildiğimiz tahta: 19 kare.',
+  'Mini': 'Mini',
+  '14 hexágonos. Duelo rápido para 2-3.': '14 kare. 2-3 kişilik hızlı düello.',
+  'Extendido': 'Genişletilmiş',
+  '30 hexágonos, pensado para 5-6 jugadores.': '30 kare, 5-6 oyuncu için tasarlandı.',
+  'Grande': 'Büyük',
+  '37 hexágonos para partidas largas.': 'Uzun oyunlar için 37 kare.',
+  'Gigante': 'Dev',
+  '61 hexágonos. Un continente entero.': '61 kare. Koca bir kıta.',
+  'Anillo del Lago': 'Göl Halkası',
+  'Un anillo de tierra alrededor de un lago central con puertos.': 'Ortadaki limanlı bir gölün çevresinde halka şeklinde bir kara.',
+  'Estrella': 'Yıldız',
+  'Hexágono con seis puntas: peleas en las esquinas.': 'Altı köşeli altıgen: köşelerde kapışma.',
+  'Dos Reinos': 'İki Krallık',
+  'Dos mitades unidas por dos puentes de tierra.': 'İki kara köprüsüyle bağlı iki yarım.',
+  'Archipiélago': 'Takımadalar',
+  'Islas separadas por el mar. Elige bien dónde empiezas.': 'Denizle ayrılmış adalar. Nereden başlayacağını iyi seç.',
+  'Pangea aleatoria': 'Rastgele Pangea',
+  'Un continente con forma aleatoria. Tamaño configurable.': 'Rastgele şekilli bir kıta. Boyutu ayarlanabilir.',
+  'Personalizado': 'Özel',
+  'Un mapa hecho en el editor.': 'Editörde yapılmış bir harita.',
 };

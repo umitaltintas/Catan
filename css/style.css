@@ -324,3 +324,6 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
 @keyframes tileFlip { 0% { transform: scaleX(0) scaleY(.85); filter: brightness(2); } 60% { transform: scaleX(1.08); } 100% { transform: none; filter: none; } }
 /* fog of war */
 .fog-layer { fill: #060912; opacity: .94; pointer-events: none; }
+/* language switch */
+.lang-switch { justify-content: center; margin-top: 16px; position: relative; }
+.lang-switch .chip { font-size: 13px; padding: 6px 12px; }
