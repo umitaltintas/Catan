@@ -5,7 +5,7 @@ import { gameScreen } from './ui/gameView.js';
 import { editorScreen, decodeMap } from './ui/editor.js';
 import { showHelp, creditLine } from './ui/help.js';
 import { Net, HOST_SESSION, GUEST_SESSION } from './net.js';
-import { openFlagEditor, flagImg, myKingdom, saveMyKingdom, patternFlag } from './ui/flag.js';
+import { openFlagEditor, flagImg, myKingdom, saveMyKingdom, defaultKingdom } from './ui/flag.js';
 import { autoPixelize } from './ui/pixel.js';
 import { t, LANG, LANGS, setLang } from './i18n.js';
 
@@ -52,14 +52,14 @@ async function backToRoom(sess) {
   toast(t('📡 Volviendo a la sala {code}...', { code: sess.code }));
   try {
     App.net = new Net();
-    await App.net.join(sess.code, sess.name, myKingdom() || {});
+    await App.net.join(sess.code, sess.name, myOrDefaultKingdom());
   } catch (e) {
     App.net = null;
     toast('❌ ' + e.message, 'error', 5000);
   }
 }
 
-const myOrDefaultKingdom = () => myKingdom() || { name: storage('katanittes.name') || '', color: '#e53935', flag: patternFlag('#e53935', 1) };
+const myOrDefaultKingdom = () => myKingdom() || defaultKingdom();
 
 // "Tu reino" on the main menu: name + banner are set before any game (local, host or join)
 function kingdomPanel() {

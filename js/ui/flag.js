@@ -111,6 +111,41 @@ export function flagImg(flag, size = 24, cls = 'flag-img') {
 export function myKingdom() {
   return storage(MY_KEY) || null;
 }
+
+// the default banner before you paint your own: the Turkish flag, drawn to the official proportions
+// (height G: crescent circles of 1/2 G and 2/5 G, 1/16 G apart; star of 1/4 G)
+let trFlag = null;
+export function turkishFlag() {
+  if (trFlag) return trFlag;
+  const c = document.createElement('canvas');
+  c.width = FLAG_W;
+  c.height = FLAG_H;
+  const g = c.getContext('2d');
+  const G = FLAG_H, cy = G / 2;
+  g.fillStyle = '#e30a17';
+  g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.arc(G * 0.5, cy, G * 0.25, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#e30a17';
+  g.beginPath();
+  g.arc(G * 0.5625, cy, G * 0.2, 0, Math.PI * 2);
+  g.fill();
+  // five-pointed star, one point towards the crescent
+  const sx = G * 0.8208, R = G * 0.125, r = R * 0.381966;
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = Math.PI + (i * Math.PI) / 5, d = i % 2 ? r : R;
+    g[i ? 'lineTo' : 'moveTo'](sx + Math.cos(a) * d, cy + Math.sin(a) * d);
+  }
+  g.closePath();
+  g.fill();
+  return (trFlag = c.toDataURL('image/png'));
+}
+
+export const defaultKingdom = () => ({ name: storage('katanittes.name') || '', color: '#e53935', flag: turkishFlag() });
 export function saveMyKingdom(k) {
   storage(MY_KEY, k);
 }

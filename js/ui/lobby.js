@@ -6,7 +6,7 @@ import { SHAPES, generateBoard } from '../engine/board.js';
 import { DEV_DECKS, TILE_INFO } from '../engine/constants.js';
 import { createGame } from '../engine/game.js';
 import { newSeed } from '../engine/rng.js';
-import { openFlagEditor, flagImg, patternFlag, validFlag, myKingdom, saveMyKingdom } from './flag.js';
+import { openFlagEditor, flagImg, patternFlag, validFlag, myKingdom, saveMyKingdom, defaultKingdom } from './flag.js';
 import { t } from '../i18n.js';
 
 const CFG_KEY = 'katanittes.lastConfig';
@@ -50,7 +50,7 @@ export function lobbyScreen(root, opts = {}) {
     cfg.players.forEach((p, i) => { if (i > 0 && p.kind === 'human') p.kind = 'remote'; });
   } else cfg.players.forEach(p => { if (p.kind === 'remote') p.kind = 'human'; });
   // every kingdom has a banner; seat 0 uses the one this device remembers
-  const mine = myKingdom();
+  const mine = myKingdom() || defaultKingdom();
   if (mine && cfg.players[0] && cfg.players[0].kind === 'human') Object.assign(cfg.players[0], { name: mine.name || cfg.players[0].name, color: mine.color || cfg.players[0].color, flag: mine.flag });
   cfg.players.forEach((p, i) => { if (!validFlag(p.flag)) p.flag = patternFlag(p.color, i); });
 
