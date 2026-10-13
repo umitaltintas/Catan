@@ -6,5 +6,21 @@
   "scripts": {
     "test": "node tests/rules.mjs && node tests/sim.mjs 300",
     "sim": "node tests/sim.mjs"
-  }
+  },
+  "version": "1.0.0",
+  "description": "*[English](README.md) · Türkçe · [Español](README.es.md)*",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/umitaltintas/Catan.git"
+  },
+  "keywords": [],
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/umitaltintas/Catan/issues"
+  },
+  "homepage": "https://github.com/umitaltintas/Catan#readme"
 }

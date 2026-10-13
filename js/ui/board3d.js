@@ -1,10 +1,10 @@
 // 3D map renderer — "realistic tabletop miniature".
 // One continuous heightfield island textured by splatting 8 PBR-ish layers (grass,
 // forest floor, dirt, rock, sand, snow, wheat field, meadow) with normal maps, lit by a
-// physical sky (IBL), with a depth-aware sea (foam at the shore, animated normals),
-// instanced Blender props (assets/models/kit.glb), instanced grass/wheat swaying in the
-// wind, drifting cloud shadows, GTAO and tilt-shift. Tokens, port signs and click
-// targets are crisp pixel-art CSS2D labels (the UI style).
+// physical sky (IBL), with a depth-aware sea (foam at the shore), instanced Blender props
+// (assets/models/kit.glb), instanced grass and wheat, cloud shadows, GTAO and tilt-shift.
+// Nothing moves on its own: frames are drawn only when something changes. Tokens, port signs
+// and click targets are crisp pixel-art CSS2D labels (the UI style).
 // Same interface as BoardView: render(state, view), setZoom(), resetView(), dispose().
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -211,7 +211,8 @@ const KIT_TINT = { Leaf2: '#d4e8b0', LeafDark: '#a4c094', Pine2: '#c6dac8', Ston
 const WIND = { Leaf: 0.05, Leaf2: 0.05, LeafDark: 0.05, Pine: 0.035, Pine2: 0.035, Cloth: 0.08 };
 export function loadKit() {
   if (!kitPromise)
-    kitPromise = new GLTFLoader().loadAsync(ASSET('models/kit.glb')).then(g => {
+    // ?v=: bump it when the models change, or browsers keep showing the cached old file
+    kitPromise = new GLTFLoader().loadAsync(ASSET('models/kit.glb?v=2')).then(g => {
       const kit = {};
       for (const o of [...g.scene.children]) {
         o.position.set(0, 0, 0);
@@ -1310,7 +1311,7 @@ export class Board3D {
     this.placeSun(cx, cz);
 
     // ---- terrain mesh
-    const STEP = SETTINGS.quality === 'high' ? 0.045 : 0.075;
+    const STEP = SETTINGS.quality === 'high' ? 0.065 : 0.085;
     const x0 = b.minX - 0.8, z0 = b.minY - 0.8;
     const nx = Math.ceil((b.maxX - b.minX + 1.6) / STEP) + 1, nz = Math.ceil((b.maxY - b.minY + 1.6) / STEP) + 1;
     const N = nx * nz;
