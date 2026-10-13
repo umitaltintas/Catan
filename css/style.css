@@ -51,8 +51,7 @@ h1, h2, h3 { font-family: var(--display); margin: 0; }
 /* ---------- menu ---------- */
 .menu { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px 16px; position: relative; overflow: hidden; }
 .menu-bg { position: absolute; inset: 0; opacity: .35; pointer-events: none; }
-.menu-bg .fhex { position: absolute; font-size: 42px; animation: floaty 9s ease-in-out infinite; }
-@keyframes floaty { 0%,100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-26px) rotate(12deg) } }
+.menu-bg .fhex { position: absolute; font-size: 42px; }
 .logo { text-align: center; position: relative; margin-bottom: 30px; }
 .logo .t1 { font-family: var(--display); font-weight: 700; font-size: clamp(52px, 11vw, 110px); line-height: .9; letter-spacing: 2px;
   background: linear-gradient(180deg, #fff3c4, #ffc233 55%, #e58a00); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -275,7 +274,7 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
 
 .pass-screen { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: radial-gradient(circle, #2a1840, #0b0f1e); text-align: center; padding: 20px; cursor: pointer; }
 .pass-screen .big { font-family: var(--display); font-size: clamp(34px, 7vw, 60px); font-weight: 700; }
-.pass-screen .eye { font-size: 90px; animation: floaty 3s infinite; }
+.pass-screen .eye { font-size: 90px; }
 
 .announce { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 40; }
 .announce > div { background: rgba(8,14,28,.88); border: 2px solid var(--pink); padding: 22px 34px; border-radius: 22px; text-align: center; animation: announce 2.6s ease-in-out forwards; box-shadow: 0 0 60px rgba(255,93,143,.4); }
@@ -292,7 +291,7 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
 .toast button { pointer-events: auto; margin-left: 8px; }
 
 .winner-hero { text-align: center; }
-.winner-hero .trophy { font-size: 80px; animation: floaty 2.5s infinite; }
+.winner-hero .trophy { font-size: 80px; }
 .score-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
 .score-table td, .score-table th { padding: 6px 8px; text-align: center; border-bottom: 1px solid var(--line); }
 .score-table td:first-child, .score-table th:first-child { text-align: left; }

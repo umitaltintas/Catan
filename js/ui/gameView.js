@@ -651,7 +651,6 @@ function renderBoard(st, v, locked) {
   const txt = locked ? '' : bannerText(st, v, inter);
   if (ui.els.banner.dataset.txt !== txt) {
     ui.els.banner.dataset.txt = txt;
-    delete ui.els.banner.dataset.jit;
     ui.els.banner.textContent = txt;
   }
   ui.els.banner.classList.toggle('hidden', !txt);

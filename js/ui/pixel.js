@@ -409,44 +409,9 @@ export function pxIcon(name, size = 20, title) {
 const EMOJI = /(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*️?|[⭐✨])/gu;
 const EMOJI_TEST = /\p{Extended_Pictographic}/u;
 
-// Split .jit elements into letters that wobble (hand-drawn "boil" effect).
-function jitterize(root) {
-  for (const el of root.querySelectorAll('.jit:not([data-jit])')) {
-    el.dataset.jit = '1';
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-    const texts = [];
-    while (walker.nextNode()) texts.push(walker.currentNode);
-    let i = 0;
-    for (const t of texts) {
-      const frag = document.createDocumentFragment();
-      // letters are grouped per word so line breaks never split a word
-      let word = null;
-      for (const ch of t.nodeValue) {
-        if (ch === ' ') {
-          frag.append(' ');
-          word = null;
-          continue;
-        }
-        if (!word) {
-          word = document.createElement('span');
-          word.className = 'jw';
-          frag.append(word);
-        }
-        const s = document.createElement('span');
-        s.className = 'jl';
-        s.style.animationDelay = `-${((i++ * 137) % 600) / 1000}s`;
-        s.textContent = ch;
-        word.append(s);
-      }
-      t.parentNode.replaceChild(frag, t);
-    }
-  }
-}
-
 // Replace every emoji inside `root` by its pixel-art sprite.
 export function pixelize(root) {
   if (!root) return;
-  if (root.querySelectorAll) jitterize(root);
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode: n => (n.parentNode && n.parentNode.closest && !n.parentNode.closest('input,textarea,select,option,.nopx') && EMOJI_TEST.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
   });

@@ -24,8 +24,6 @@ async function menuDiorama(el) {
     b.render(st, {});
     b.labels.domElement.style.display = 'none';
     b.controls.enabled = false;
-    b.controls.autoRotate = true;
-    b.controls.autoRotateSpeed = 0.35;
     b.setZoom(1.15);
     const prev = App.onLeave;
     App.onLeave = () => {

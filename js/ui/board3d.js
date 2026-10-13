@@ -760,7 +760,6 @@ export class Board3D {
     this.staticKey = '';
     this.spawns = [];
     this.plates = [];
-    this.bobbers = [];
     this.prevPieces = new Set();
     this.floaters = [];
 
@@ -785,20 +784,24 @@ export class Board3D {
 
     this.resizeObs = new ResizeObserver(() => this.resize());
     this.resizeObs.observe(container);
-    this.clock = new THREE.Clock();
     this.now = () => performance.now(); // overridable time source (frame-by-frame recording)
     this.alive = true;
     this.dirty = 2; // frames that must redraw shadows and piece masks
-    this.frameN = 0;
+    this.redraw = true; // one plain frame (a state update, a uniform change...)
     this.activeUntil = 0;
+    this.lastDraw = 0;
     const wake = () => (this.activeUntil = performance.now() + 1500);
-    // user input only: the menu's slow auto-rotation also fires 'change' and can run at the idle rate
     for (const ev of ['pointerdown', 'pointermove', 'wheel', 'touchmove']) this.canvas.addEventListener(ev, wake, { passive: true });
+    // the scene is still (no wind or waves): a frame is drawn only when something changes, so a
+    // table waiting for a player leaves the GPU idle. A slow heartbeat catches late texture loads.
     const loop = () => {
       if (!this.alive) return;
       this.raf = requestAnimationFrame(loop);
-      // while nothing happens (only wind, water and bobbing boats) every other frame is enough
-      if (++this.frameN % 2 && !this.busy()) return;
+      this.controls.update();
+      const now = performance.now();
+      if (!this.redraw && !this.busy() && this.camKey() === this.lastCamKey && now - this.lastDraw < 1000) return;
+      this.redraw = false;
+      this.lastDraw = now;
       this.tick();
     };
     loop();
@@ -806,7 +809,8 @@ export class Board3D {
 
   // something on screen moves for real: the user, an animation or a camera move
   busy() {
-    return performance.now() < this.activeUntil || this.dirty > 0 || this.camAnim || this.spawns.length || this.plates.length || (this.pings && this.pings.length) || this.floaters.length || (this.diceFx && this.diceFx.throw);
+    const ru = U.uRobber.value, robberFading = Math.abs((this.robberTile ? 1 : 0) - ru.z) > 0.005;
+    return performance.now() < this.activeUntil || this.dirty > 0 || this.camAnim || robberFading || this.spawns.length || this.plates.length || (this.pings && this.pings.length) || this.floaters.length || (this.diceFx && this.diceFx.throw);
   }
 
   setupPasses() {
@@ -1206,12 +1210,7 @@ export class Board3D {
   }
 
   tick() {
-    const t = this.clock.getElapsedTime();
-    U.uTime.value = t;
-    for (const b of this.bobbers) {
-      b.obj.position.y = b.y + Math.sin(t * 1.4 + b.ph) * 0.025;
-      b.obj.rotation.z = Math.sin(t * 1.1 + b.ph) * 0.05;
-    }
+    // no ambient motion: grass, clouds, water, flags and boats stay put (uTime stays at 0)
     const now = this.now();
     this.spawns = this.spawns.filter(sp => {
       const k = Math.min(1, (now - sp.t0) / 450);
@@ -1239,7 +1238,6 @@ export class Board3D {
     if (rt && (rt.x !== ru.x || rt.y !== ru.y)) ru.set(rt.x, rt.y, 0);
     ru.z += ((rt ? 1 : 0) - ru.z) * 0.06;
     this.updateCamAnim(now);
-    this.controls.update();
     this.scaleTokens();
     this.updateFloaters(now);
     // shadows: right away when pieces move, otherwise a few times a second for the bobbing boats
@@ -1249,7 +1247,7 @@ export class Board3D {
     this.lastCamKey = camKey;
     if (camMoved || moving) this.renderMasks();
     // flagged after the mask passes, so the shadow map is drawn by the main render
-    if (moving || this.frameN % 8 === 0) this.renderer.shadowMap.needsUpdate = true;
+    if (moving) this.renderer.shadowMap.needsUpdate = true;
     if (this.dirty > 0) this.dirty--;
     this.composer.render();
     this.labels.render(this.scene, this.camera);
@@ -1270,6 +1268,7 @@ export class Board3D {
 
   // ---------- build ----------
   render(st, view = {}) {
+    this.redraw = true;
     this.lastSt = st;
     const bd = st.board;
     this.bounds = bd.bounds;
@@ -1304,7 +1303,6 @@ export class Board3D {
         if (o.geometry && o.userData.own) o.geometry.dispose();
       });
     }
-    this.bobbers = [];
     this.tokens = [];
     const field = (this.field = terrainOf(st, faceDown));
     const b = bd.bounds;
@@ -1462,7 +1460,6 @@ export class Board3D {
       boat.position.set(port.x + port.ny * 0.3, 0.0, port.y - port.nx * 0.3);
       boat.rotation.y = -Math.atan2(port.ny, port.nx) + Math.PI / 2;
       boat.scale.setScalar(1.35);
-      this.bobbers.push({ obj: boat, y: 0.0, ph: port.id * 1.7 });
       const sign = css2d('tok3d-at', `<div class="port3d">${port.type === 'any' ? '<b>3:1</b>' : `${pxIcon(port.type, 16).outerHTML}<b>2:1</b>`}</div>`);
       sign.position.set(port.x, 0.55, port.y);
       this.staticGroup.add(boat, sign);
