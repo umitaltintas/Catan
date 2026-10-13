@@ -1,0 +1,3 @@
+// Türkçe: gameView
+export default {
+};

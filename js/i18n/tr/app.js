@@ -1,0 +1,3 @@
+// Türkçe: app
+export default {
+};

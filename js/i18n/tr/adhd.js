@@ -1,0 +1,3 @@
+// Türkçe: adhd
+export default {
+};

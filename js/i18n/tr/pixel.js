@@ -1,0 +1,3 @@
+// Türkçe: pixel
+export default {
+};

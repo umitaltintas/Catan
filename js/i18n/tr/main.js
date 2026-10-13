@@ -1,0 +1,3 @@
+// Türkçe: main
+export default {
+};

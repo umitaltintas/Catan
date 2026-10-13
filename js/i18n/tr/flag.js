@@ -1,0 +1,3 @@
+// Türkçe: flag
+export default {
+};

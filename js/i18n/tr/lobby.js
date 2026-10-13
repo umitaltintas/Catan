@@ -1,0 +1,3 @@
+// Türkçe: lobby
+export default {
+};

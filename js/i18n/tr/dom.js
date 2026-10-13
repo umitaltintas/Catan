@@ -1,0 +1,3 @@
+// Türkçe: dom
+export default {
+};

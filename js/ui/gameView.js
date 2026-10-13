@@ -1,4 +1,5 @@
 import { App } from '../app.js';
+import { t } from '../i18n.js';
 import { h, clear, rich, toast, sync } from './dom.js';
 import { BoardView } from './boardView.js';
 import { RES, TILE_INFO, COSTS, DEV_INFO, EVENTS } from '../engine/constants.js';
@@ -704,7 +705,7 @@ function renderLog(st) {
   const box = ui.els.log;
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   clear(box);
-  for (const l of st.log.slice(-120)) box.append(h('div', null, rich(l.msg, st.players)));
+  for (const l of st.log.slice(-120)) box.append(h('div', null, rich(l.k ? t(l.k, l.v) : t(l.msg), st.players)));
   if (atBottom || !ui.logInit) box.scrollTop = box.scrollHeight;
   ui.logInit = true;
 }

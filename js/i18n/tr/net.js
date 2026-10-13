@@ -1,0 +1,3 @@
+// Türkçe: net
+export default {
+};

@@ -1,0 +1,3 @@
+// Türkçe: boardView
+export default {
+};

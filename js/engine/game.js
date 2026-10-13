@@ -3,20 +3,26 @@
 import { RES, COSTS, DEV_DECKS, EVENTS, TILE_INFO, DEV_INFO } from './constants.js';
 import { rand, randInt, shuffle, pick } from './rng.js';
 import { generateBoard } from './board.js';
+import { fill } from '../i18n.js';
 
 export const zeroRes = () => ({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 });
 export const handSize = h => RES.reduce((a, r) => a + (h[r] || 0), 0);
 export const canAfford = (h, cost) => Object.entries(cost).every(([r, n]) => (h[r] || 0) >= n);
 const resName = r => `:${r}:`;
 
+// messages stay in Spanish (the translation key) plus their vars: every screen translates
+// them into its own language, so an online table can mix languages
 class GameError extends Error {}
 class Blocked extends Error {}
-const fail = m => {
-  throw new GameError(m);
+const fail = (m, vars) => {
+  const e = new GameError(fill(m, vars));
+  e.k = m;
+  e.v = vars;
+  throw e;
 };
 
-function log(s, msg, pid = -1) {
-  s.log.push({ turn: s.turn, pid, msg });
+function log(s, msg, pid = -1, vars) {
+  s.log.push(vars ? { turn: s.turn, pid, msg: fill(msg, vars), k: msg, v: vars } : { turn: s.turn, pid, msg });
   if (s.log.length > 400) s.log.splice(0, s.log.length - 400);
 }
 
@@ -853,7 +859,7 @@ H.discard = (s, a) => {
   if (!need) fail('No tienes que descartar.');
   const res = a.res || {};
   const total = RES.reduce((t, r) => t + (res[r] || 0), 0);
-  if (total !== need) fail(`Debes descartar exactamente ${need} cartas.`);
+  if (total !== need) fail('Debes descartar exactamente {need} cartas.', { need });
   const p = s.players[a.pid];
   for (const r of RES) if ((res[r] || 0) < 0 || (res[r] || 0) > p.res[r]) fail('No tienes esas cartas.');
   for (const r of RES) {
@@ -1015,7 +1021,7 @@ H.bankTrade = (s, a) => {
   if (!RES.includes(a.give) || !RES.includes(a.get) || a.give === a.get) fail('Intercambio inválido.');
   const ratio = tradeRatio(s, a.pid, a.give);
   const p = s.players[a.pid];
-  if (p.res[a.give] < ratio) fail(`Necesitas ${ratio} de ese recurso.`);
+  if (p.res[a.give] < ratio) fail('Necesitas {ratio} de ese recurso.', { ratio });
   if (s.bank[a.get] < 1) fail('El banco no tiene ese recurso.');
   p.res[a.give] -= ratio;
   s.bank[a.give] += ratio;
@@ -1221,7 +1227,7 @@ export function applyAction(s, a) {
       s.actions++;
       return { ok: true, blocked: true };
     }
-    if (e instanceof GameError) return { ok: false, error: e.message };
+    if (e instanceof GameError) return { ok: false, error: e.message, errorKey: e.k, errorVars: e.v };
     throw e;
   }
 }
