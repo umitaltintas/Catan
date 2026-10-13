@@ -133,7 +133,11 @@ const finalMaterial = outline =>
 // terrain still counts as visible (only real occluders like hills and trees hide a piece)
 const MASK_VS = `uniform float uPull;
 void main() {
+  #ifdef USE_INSTANCING
+  vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+  #else
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  #endif
   mv.xyz -= normalize(mv.xyz) * uPull;
   gl_Position = projectionMatrix * mv;
 }`;
@@ -217,6 +221,16 @@ function patch(mat, opts = {}) {
   mat.customProgramCacheKey = () => `k${wind}${clouds}` + (opts.key || '');
   return mat;
 }
+
+// port walkways, mooring posts and their lamps: shared by every board (instanced per map)
+const DOCK = {
+  walk: new THREE.BoxGeometry(1, 0.035, 0.1),
+  post: new THREE.CylinderGeometry(0.035, 0.04, 0.26, 8),
+  tip: new THREE.SphereGeometry(0.045, 8, 6),
+  plank: new THREE.MeshStandardMaterial({ color: '#8a5a36', roughness: 0.85 }),
+  postMat: new THREE.MeshStandardMaterial({ color: '#5b3e2b', roughness: 0.8 }),
+  tipMat: new THREE.MeshStandardMaterial({ color: '#ffcd75', roughness: 0.5, emissive: '#ffcd75', emissiveIntensity: 0.25 }),
+};
 
 // ---------- assets ----------
 let kitPromise = null, texPromise = null;
@@ -334,11 +348,13 @@ function flagMaterial(flag) {
   flagMats.set(key, m);
   return m;
 }
+const POLE_GEOS = new Map(); // one pole geometry per height, shared (and batched) by every banner
 function banner(flag, x, z, height, size = 1) {
   const g = new THREE.Group();
   g.scale.setScalar(size);
   height /= size;
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.006, height, 6).translate(0, height / 2, 0), patch(POLE_MAT, { key: 'pole' }));
+  if (!POLE_GEOS.has(height)) POLE_GEOS.set(height, new THREE.CylinderGeometry(0.005, 0.006, height, 6).translate(0, height / 2, 0));
+  const pole = new THREE.Mesh(POLE_GEOS.get(height), patch(POLE_MAT, { key: 'pole' }));
   const cloth = new THREE.Mesh(FLAG_GEO, flagMaterial(flag));
   cloth.position.set(0.004, height - 0.065, 0);
   pole.castShadow = cloth.castShadow = true;
@@ -1317,6 +1333,7 @@ export class Board3D {
       c.traverse(o => {
         if (o.isCSS2DObject) o.element.remove();
         if (o.geometry && o.userData.own) o.geometry.dispose();
+        if (o.isInstancedMesh) o.dispose(); // its per-instance matrices live on the GPU
       });
     }
     this.tokens = [];
@@ -1448,10 +1465,11 @@ export class Board3D {
     }
 
     // ---- ports: two walkways from the sign straight to the two corners that use it (like the
-    // classic board), a mooring post on each of those corners, a boat and a pixel sign
-    const PLANK = new THREE.MeshStandardMaterial({ color: '#8a5a36', roughness: 0.85 });
-    const POST = new THREE.MeshStandardMaterial({ color: '#5b3e2b', roughness: 0.8 });
-    const TIP = new THREE.MeshStandardMaterial({ color: '#ffcd75', roughness: 0.5, emissive: '#ffcd75', emissiveIntensity: 0.25 });
+    // classic board), a mooring post on each of those corners, a boat and a pixel sign.
+    // Every walkway, post, lamp and boat of the map is one instanced draw per part.
+    const dock = { walk: [], post: [], tip: [], boat: [] };
+    const o3 = new THREE.Object3D();
+    const keep = list => (o3.updateMatrix(), list.push(o3.matrix.clone()), o3.rotation.set(0, 0, 0), o3.scale.set(1, 1, 1));
     for (const port of bd.ports) {
       const E = bd.edges[port.edge];
       const hub = new THREE.Vector3(port.x - port.nx * 0.12, 0.07, port.y - port.ny * 0.12);
@@ -1459,27 +1477,38 @@ export class Board3D {
         const V = bd.vertices[vid];
         const end = new THREE.Vector3(V.x, Math.max(this.heightAt(V.x, V.y), 0.05) + 0.03, V.y);
         const d = end.clone().sub(hub), flat = Math.hypot(d.x, d.z);
-        const walk = new THREE.Mesh(new THREE.BoxGeometry(1, 0.035, 0.1), PLANK);
-        walk.scale.x = d.length();
-        walk.position.copy(hub).add(end).multiplyScalar(0.5);
-        walk.rotation.order = 'YZX';
-        walk.rotation.y = -Math.atan2(d.z, d.x);
-        walk.rotation.z = Math.atan2(d.y, flat);
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.26, 8), POST);
-        post.position.set(end.x - (d.x / flat) * 0.06, end.y + 0.11, end.z - (d.z / flat) * 0.06);
-        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), TIP);
-        tip.position.set(post.position.x, post.position.y + 0.14, post.position.z);
-        for (const m of [walk, post, tip]) m.castShadow = m.receiveShadow = true;
-        this.staticGroup.add(walk, post, tip);
+        o3.position.copy(hub).add(end).multiplyScalar(0.5);
+        o3.rotation.order = 'YZX';
+        o3.rotation.set(0, -Math.atan2(d.z, d.x), Math.atan2(d.y, flat));
+        o3.scale.set(d.length(), 1, 1);
+        keep(dock.walk);
+        o3.rotation.order = 'XYZ';
+        const px = end.x - (d.x / flat) * 0.06, py = end.y + 0.11, pz = end.z - (d.z / flat) * 0.06;
+        o3.position.set(px, py, pz);
+        keep(dock.post);
+        o3.position.set(px, py + 0.14, pz);
+        keep(dock.tip);
       }
-      const boat = this.kit.boat.clone();
-      boat.position.set(port.x + port.ny * 0.3, 0.0, port.y - port.nx * 0.3);
-      boat.rotation.y = -Math.atan2(port.ny, port.nx) + Math.PI / 2;
-      boat.scale.setScalar(1.35);
+      o3.position.set(port.x + port.ny * 0.3, 0.0, port.y - port.nx * 0.3);
+      o3.rotation.y = -Math.atan2(port.ny, port.nx) + Math.PI / 2;
+      o3.scale.setScalar(1.35);
+      keep(dock.boat);
       const sign = css2d('tok3d-at', `<div class="port3d">${port.type === 'any' ? '<b>3:1</b>' : `${pxIcon(port.type, 16).outerHTML}<b>2:1</b>`}</div>`);
       sign.position.set(port.x, 0.55, port.y);
-      this.staticGroup.add(boat, sign);
+      this.staticGroup.add(sign);
     }
+    const instanced = (geo, mat, list, base) => {
+      if (!list.length) return;
+      const im = new THREE.InstancedMesh(geo, mat, list.length);
+      list.forEach((m, i) => im.setMatrixAt(i, base ? m.clone().multiply(base) : m));
+      im.castShadow = im.receiveShadow = true;
+      this.staticGroup.add(im);
+    };
+    instanced(DOCK.walk, DOCK.plank, dock.walk);
+    instanced(DOCK.post, DOCK.postMat, dock.post);
+    instanced(DOCK.tip, DOCK.tipMat, dock.tip);
+    this.kit.boat.updateMatrixWorld(true);
+    this.kit.boat.traverse(m => m.isMesh && instanced(m.geometry, m.material, dock.boat, m.matrixWorld));
   }
 
   // instanced Blender props (forests, sheep, improvements...) sitting on the terrain
@@ -1832,6 +1861,35 @@ export class Board3D {
 
 
 
+  // Every road, joint and building is built as its own little model, but drawing them one by one
+  // costs a draw call per part and per pass (main, ambient occlusion, shadows, masks). Settled
+  // pieces are merged here into one instanced mesh per (part, colour): a late game with a hundred
+  // roads still draws each road part once per colour.
+  batchPieces(objs) {
+    const groups = new Map();
+    for (const obj of objs) {
+      obj.updateMatrixWorld(true);
+      obj.traverse(m => {
+        if (!m.isMesh || !m.visible || Array.isArray(m.material)) return;
+        const k = m.geometry.uuid + m.material.uuid + m.layers.mask + (m.userData.pc ? m.userData.pc.getHexString() : '');
+        if (!groups.has(k)) groups.set(k, { m, mats: [] });
+        groups.get(k).mats.push(m.matrixWorld.clone());
+      });
+      this.dynGroup.remove(obj);
+    }
+    for (const { m, mats } of groups.values()) {
+      const im = new THREE.InstancedMesh(m.geometry, m.material, mats.length);
+      mats.forEach((x, i) => im.setMatrixAt(i, x));
+      im.castShadow = m.castShadow;
+      im.receiveShadow = m.receiveShadow;
+      im.layers.mask = m.layers.mask;
+      im.userData.pc = m.userData.pc;
+      im.onBeforeRender = m.onBeforeRender;
+      im.computeBoundingSphere(); // around all its instances, so frustum culling stays right
+      this.dynGroup.add(im);
+    }
+  }
+
   buildDynamic(st, view) {
     const bd = st.board;
     const kit = this.kit;
@@ -1848,7 +1906,10 @@ export class Board3D {
     this.dirty = 2;
     for (const c of [...this.dynGroup.children]) {
       this.dynGroup.remove(c);
-      c.traverse(o => o.isCSS2DObject && o.element.remove());
+      c.traverse(o => {
+        if (o.isCSS2DObject) o.element.remove();
+        if (o.isInstancedMesh) o.dispose();
+      });
     }
     const pieces = new Set();
     this.hasPieces = false;
@@ -1864,11 +1925,13 @@ export class Board3D {
       });
       this.hasPieces = true;
     };
-    const add = (obj, key, color) => {
+    const settled = []; // pieces that don't animate: batched into instanced meshes below
+    const add = (obj, key, color, ghost) => {
       if (color) own(obj, color);
       this.dynGroup.add(obj);
       pieces.add(key);
       if (this.prevPieces.size && !this.prevPieces.has(key)) this.spawns.push({ obj, y: obj.position.y, base: obj.scale.clone(), t0: this.now() });
+      else if (!ghost) settled.push(obj);
     };
     const ghostify = o => o.traverse(m => {
       if (m.isMesh) {
@@ -1889,7 +1952,7 @@ export class Board3D {
       o.rotation.z = Math.atan2(yb - ya, len);
       if (ghost) ghostify(o);
       o.scale.set(1.08, 2.2, 2.1);
-      add(o, 'r' + eid + (ghost ? 'g' : ''), color);
+      add(o, 'r' + eid + (ghost ? 'g' : ''), color, ghost);
     };
     for (const k in st.roads) road(+k, st.players[st.roads[k]].color);
     for (const b of view.blindOwn || []) if (b.eid != null) road(b.eid, st.players[b.pid].color, true);
@@ -1946,7 +2009,7 @@ export class Board3D {
       }
       if (ghost) ghostify(o);
       o.scale.setScalar(type === 'city' ? 1.25 : 1.45);
-      add(o, 'b' + vid + type + (ghost ? 'g' : ''), pl.color);
+      add(o, 'b' + vid + type + (ghost ? 'g' : ''), pl.color, ghost);
     };
     for (const k in st.buildings) building(+k, st.buildings[k].owner, st.buildings[k].type);
     for (const b of view.blindOwn || []) building(b.vid, b.pid, b.type, true);
@@ -1959,6 +2022,7 @@ export class Board3D {
       o.scale.setScalar(1.3);
       add(o, 'robber' + t.id);
     }
+    this.batchPieces(settled);
 
     if (inter) {
       const mk = (id, x, y, z, cls) => {
