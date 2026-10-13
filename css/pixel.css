@@ -8,18 +8,24 @@
   --white: #f4f4f4; --steel: #94b0c2; --slate: #566c86; --dusk: #333c57;
   --gold: var(--sand); --pink: var(--coral); --red: var(--wine); --text: var(--white); --muted: var(--steel);
   --panel: #232b47; --panel2: #333c57; --line: rgba(148,176,194,.25);
-  --font: 'Pixelify Sans', 'Nunito', monospace; --display: 'Silkscreen', 'Pixelify Sans', monospace; --num: 'Silkscreen', monospace;
+  /* readable text in Nunito; the pixel fonts only where they stay legible: Silkscreen for the logo,
+     big titles and large numbers, Pixelify Sans for section headings */
+  --font: 'Nunito', system-ui, sans-serif; --title: 'Pixelify Sans', 'Nunito', sans-serif;
+  --display: 'Silkscreen', 'Pixelify Sans', monospace; --num: 'Silkscreen', monospace;
   --px: 3px;
 }
 * { border-radius: 0 !important; }
 html { image-rendering: pixelated; }
 body {
-  font-family: var(--font); font-weight: 500; font-size: 16px; letter-spacing: .3px;
+  font-family: var(--font); font-weight: 600; font-size: 16px;
   background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%231a1c2c'/%3E%3Crect width='1' height='1' fill='%23232b47'/%3E%3C/svg%3E") repeat;
-  -webkit-font-smoothing: none; font-smooth: never;
+  -webkit-font-smoothing: antialiased;
 }
+/* the pixel fonts stay crisp: no smoothing on them */
+h1, h2, .logo, .brand, .announce .at, .room-code, .pin, .seat-q, .cap, .vp, .board-loading { -webkit-font-smoothing: none; font-smooth: never; }
 img.px { image-rendering: pixelated; vertical-align: -0.2em; display: inline-block; }
-h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: 1px; }
+h1, h2 { font-family: var(--display); font-weight: 700; letter-spacing: 1px; }
+h3 { font-family: var(--title); font-weight: 600; letter-spacing: .5px; }
 
 /* ---------- frames ---------- */
 .card, .modal, .pcard, .offer, .toast, .banner, .event-badge, .pill, .map-card, .mode, .stepper, .player-row .swatch {
@@ -42,7 +48,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: 1px;
 
 /* ---------- buttons ---------- */
 .btn {
-  font-family: var(--font); font-weight: 600; font-size: 16px; letter-spacing: .5px;
+  font-family: var(--font); font-weight: 700; font-size: 16px;
   background: var(--blue); color: var(--white); border: 0;
   box-shadow: 0 0 0 3px var(--ink), inset -4px -4px 0 rgba(0,0,0,.35), inset 4px 4px 0 rgba(255,255,255,.28);
   padding: 10px 16px; margin: 3px; text-shadow: 2px 2px 0 rgba(0,0,0,.4);
@@ -152,7 +158,7 @@ input[type=range] { accent-color: var(--sand); }
    `transform` belongs to CSS2DRenderer (animating it made the tokens jump around the screen). */
 .tok3d.rolled { animation: tokWin .65s ease-in-out 4; }
 @keyframes tokWin { 50% { background: #7ee2a0; translate: 0 -3px; box-shadow: 0 0 0 3px var(--ink), 0 0 0 6px var(--green), inset -3px -3px 0 #3fae68, 4px 5px 0 1px rgba(0,0,0,.35); } }
-.port3d { font-family: var(--num); background: var(--white); color: var(--ink); padding: 2px 6px; font-size: 14px; font-weight: 700; box-shadow: 0 0 0 3px var(--ink), 3px 4px 0 1px rgba(0,0,0,.35); display: flex; gap: 3px; align-items: center; }
+.port3d { font-family: var(--font); font-weight: 800; background: var(--white); color: var(--ink); padding: 2px 6px; font-size: 14px; box-shadow: 0 0 0 3px var(--ink), 3px 4px 0 1px rgba(0,0,0,.35); display: flex; gap: 3px; align-items: center; }
 .rune3d { font-size: 26px; color: #f3d9a4; text-shadow: 2px 2px 0 var(--ink); }
 /* build hints: soft yellow with a slow breathing glow (no hard blinking). No `transform` here either. */
 .hot3d { pointer-events: auto; border: 0; cursor: pointer; background: #ffe7a3; padding: 0; opacity: .85;
@@ -167,10 +173,12 @@ input[type=range] { accent-color: var(--sand); }
 .board-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--sand); font-family: var(--display); font-size: 20px; text-shadow: 3px 3px 0 var(--wine); pointer-events: none; }
 .gfx-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
-/* numbers must be unambiguous (3 vs 8): Silkscreen digits */
-.vp, .dice-sum, .rcard b, .dcard b, .stepper .n, .token-num, .pcard .stats, .bank-info, .room-code, .hist em, .hist span { font-family: var(--num); }
-.pcard .name, .btn, .chip, .banner { font-weight: 600; }
-.logo .t1, .logo .t2, .brand, .card h3, .modal h2, .announce .at { font-family: var(--display); font-weight: 700; }
+/* numbers must be unambiguous (3 vs 8): Silkscreen for the big ones, bold tabular Nunito for the small ones */
+.vp, .room-code { font-family: var(--num); }
+.dice-sum, .rcard b, .dcard b, .stepper .n, .token-num, .pcard .stats, .bank-info, .hist em, .hist span { font-family: var(--font); font-weight: 800; font-variant-numeric: tabular-nums; }
+.pcard .name, .btn, .chip, .banner { font-weight: 700; }
+.logo .t1, .logo .t2, .brand, .modal h2, .announce .at { font-family: var(--display); font-weight: 700; }
+.card h3 { font-family: var(--title); font-weight: 600; }
 /* one word, two colours: KATAN in sand, ITTES in white */
 .logo .t1 { font-size: clamp(30px, 8.6vw, 112px); letter-spacing: 4px; white-space: nowrap; }
 .logo .t1b { color: var(--white); text-shadow: 0 6px 0 var(--wine), 0 12px 0 var(--ink); }
@@ -429,7 +437,7 @@ img.flag-img:not(.pixel) { image-rendering: auto; }
 /* dice history: a column in the top right corner of the map, newest on top, each chip in the thrower's colour */
 .roll-log { position: absolute; top: 10px; right: 10px; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 5px; max-height: calc(100% - 250px); overflow: hidden; padding: 6px 5px; background: rgba(26,28,44,.82); box-shadow: 0 0 0 3px var(--ink); }
 .roll-log-head { font-size: 15px; flex: none; }
-.roll-chip { flex: none; width: 28px; height: 24px; display: grid; place-items: center; font-family: var(--num); font-weight: 400; font-size: 14px; color: var(--white); background: var(--panel); box-shadow: inset 4px 0 0 var(--pc), 0 0 0 2px var(--ink); padding-left: 3px; opacity: .7; }
+.roll-chip { flex: none; width: 28px; height: 24px; display: grid; place-items: center; font-family: var(--font); font-weight: 800; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--white); background: var(--panel); box-shadow: inset 4px 0 0 var(--pc), 0 0 0 2px var(--ink); padding-left: 3px; opacity: .7; }
 .roll-chip.newest { opacity: 1; width: 32px; height: 28px; font-size: 16px; background: #333c57; box-shadow: inset 5px 0 0 var(--pc), 0 0 0 2px var(--ink), 0 0 0 4px var(--sand); margin-bottom: 2px; }
 .roll-chip.seven { color: #ef7d57; }
 @media (max-width: 720px) { .roll-log { top: 6px; right: 6px; gap: 4px; max-height: calc(100% - 230px); } .roll-chip { width: 24px; height: 20px; font-size: 12px; } }
