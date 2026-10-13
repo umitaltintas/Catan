@@ -177,19 +177,23 @@ function patch(mat, opts = {}) {
   mat.userData.patched = true;
   const wind = opts.wind || 0, clouds = !!opts.clouds;
   const prev = mat.onBeforeCompile;
+  const own = Object.prototype.hasOwnProperty.call(mat, 'onBeforeCompile'); // terrain, water, flags: extra shader code of their own
   mat.onBeforeCompile = (sh, r) => {
     if (prev) prev(sh, r);
     Object.assign(sh.uniforms, U);
-    sh.vertexShader = 'varying vec3 vFogW;\nuniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
-  ${wind ? `{
+    // the lean of trees and grass is a per-material uniform (frozen wind: uTime stays 0), so every
+    // material shares one program instead of compiling its own for its wind value
+    sh.uniforms.uWind = { value: wind };
+    sh.vertexShader = 'varying vec3 vFogW;\nuniform float uTime;\nuniform float uWind;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  if (uWind > 0.0) {
     #ifdef USE_INSTANCING
       vec3 wp0 = (instanceMatrix * vec4(0.0,0.0,0.0,1.0)).xyz;
     #else
       vec3 wp0 = (modelMatrix * vec4(0.0,0.0,0.0,1.0)).xyz;
     #endif
     float sway = sin(uTime * 1.6 + wp0.x * 1.7 + wp0.z * 1.1) + 0.4 * sin(uTime * 3.1 + wp0.z * 3.0);
-    transformed.xz += vec2(0.8, 0.5) * sway * ${wind.toFixed(4)} * max(position.y, 0.0);
-  }` : ''}`).replace('#include <project_vertex>', `#include <project_vertex>
+    transformed.xz += vec2(0.8, 0.5) * sway * uWind * max(position.y, 0.0);
+  }`).replace('#include <project_vertex>', `#include <project_vertex>
   #ifdef USE_INSTANCING
     vFogW = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
   #else
@@ -218,7 +222,7 @@ function patch(mat, opts = {}) {
   }
   #include <dithering_fragment>`);
   };
-  mat.customProgramCacheKey = () => `k${wind}${clouds}` + (opts.key || '');
+  mat.customProgramCacheKey = () => (clouds ? 'kc' : 'k') + (own ? ':' + (opts.key || mat.uuid) : '');
   return mat;
 }
 
@@ -703,7 +707,13 @@ export class Board3D {
       this.scene.remove(g);
       if (this.diceFx) this.diceFx.group.visible = was && !!this.diceFx.throw;
     };
-    this.renderer.compileAsync(this.scene, this.camera).then(done, done);
+    // compile for the target the game really draws into (the composer's buffer: linear, no tone
+    // mapping), not for the screen, or every shader gets compiled twice
+    const r = this.renderer, prevRT = r.getRenderTarget();
+    r.setRenderTarget(this.composer.readBuffer);
+    const p = r.compileAsync(this.scene, this.camera);
+    r.setRenderTarget(prevRT);
+    p.then(done, done);
   }
 
   ensureDice() {
