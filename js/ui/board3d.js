@@ -14,9 +14,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
-import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { probLook } from '../engine/constants.js';
 import { pixelToHex, hk } from '../engine/board.js';
@@ -88,31 +86,49 @@ function tiltShader(dir) {
       }`,
   };
 }
-const OutlineShader = {
-  uniforms: { tDiffuse: { value: null }, tVis: { value: null }, tAll: { value: null }, uTexel: { value: new THREE.Vector2() } },
-  vertexShader: PASS_VS,
-  fragmentShader: `uniform sampler2D tDiffuse; uniform sampler2D tVis; uniform sampler2D tAll; uniform vec2 uTexel; varying vec2 vUv;
-    void main() {
-      vec4 base = texture2D(tDiffuse, vUv);
-      vec4 a = texture2D(tAll, vUv);
-      vec3 col = base.rgb;
-      if (a.a > 0.5) {
-        // inside a piece that something hides: a faint glimpse of its colour
-        if (texture2D(tVis, vUv).a < 0.5) col = mix(col, a.rgb, 0.22);
-      } else {
-        vec4 n = vec4(0.0); float nv = 0.0;
-        for (int k = 0; k < 16; k++) {
-          float ang = float(k) * 0.7853982;
-          vec2 off = vec2(cos(ang), sin(ang)) * uTexel * (k < 8 ? 1.0 : 2.0);
-          vec4 s = texture2D(tAll, vUv + off);
-          if (s.a > 0.5) { n = s; nv = max(nv, texture2D(tVis, vUv + off).a); }
+// the last full-screen pass does three jobs in one go (it used to be three passes): ACES tone
+// mapping + sRGB output, the piece outlines (see renderMasks) and the vignette
+const finalMaterial = outline =>
+  new THREE.RawShaderMaterial({
+    name: 'FinalShader',
+    defines: { OUTLINE: outline ? 1 : 0 },
+    uniforms: {
+      tDiffuse: { value: null }, tVis: { value: null }, tAll: { value: null }, uTexel: { value: new THREE.Vector2() },
+      toneMappingExposure: { value: 1 }, vOffset: { value: 0.95 }, vDark: { value: 1.05 },
+    },
+    vertexShader: `precision highp float;
+      uniform mat4 modelViewMatrix; uniform mat4 projectionMatrix; attribute vec3 position; attribute vec2 uv; varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `precision highp float;
+      uniform sampler2D tDiffuse; uniform sampler2D tVis; uniform sampler2D tAll; uniform vec2 uTexel;
+      uniform float vOffset; uniform float vDark; varying vec2 vUv;
+      #include <tonemapping_pars_fragment>
+      #include <colorspace_pars_fragment>
+      void main() {
+        vec4 base = texture2D(tDiffuse, vUv);
+        vec3 col = sRGBTransferOETF(vec4(ACESFilmicToneMapping(base.rgb), 1.0)).rgb;
+        #if OUTLINE
+        vec4 a = texture2D(tAll, vUv);
+        if (a.a > 0.5) {
+          // inside a piece that something hides: a faint glimpse of its colour
+          if (texture2D(tVis, vUv).a < 0.5) col = mix(col, a.rgb, 0.22);
+        } else {
+          vec4 n = vec4(0.0); float nv = 0.0;
+          for (int k = 0; k < 16; k++) {
+            float ang = float(k) * 0.7853982;
+            vec2 off = vec2(cos(ang), sin(ang)) * uTexel * (k < 8 ? 1.0 : 2.0);
+            vec4 s = texture2D(tAll, vUv + off);
+            if (s.a > 0.5) { n = s; nv = max(nv, texture2D(tVis, vUv + off).a); }
+          }
+          // visible edge: dark ink of the owner's colour; hidden edge: bright colour shining through
+          if (n.a > 0.5) col = nv > 0.5 ? mix(col, n.rgb * 0.42, 0.85) : mix(col, n.rgb, 0.8);
         }
-        // visible edge: dark ink of the owner's colour; hidden edge: bright colour shining through
-        if (n.a > 0.5) col = nv > 0.5 ? mix(col, n.rgb * 0.42, 0.85) : mix(col, n.rgb, 0.8);
-      }
-      gl_FragColor = vec4(col, base.a);
-    }`,
-};
+        #endif
+        vec2 v = (vUv - vec2(0.5)) * vOffset;
+        col = mix(col, vec3(1.0 - vDark), dot(v, v));
+        gl_FragColor = vec4(col, base.a);
+      }`,
+  });
 // the visible mask pulls pieces a little towards the camera, so a base sunk a few mm into the
 // terrain still counts as visible (only real occluders like hills and trees hide a piece)
 const MASK_VS = `uniform float uPull;
@@ -829,6 +845,9 @@ export class Board3D {
         ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.5, thickness: 1.0, scale: 1.2, samples: 8 });
         ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 8 });
         ao.blendIntensity = 0.9;
+        // ambient occlusion is soft: computing it (and its normal/depth pre-pass) at half resolution
+        // costs a quarter of the pixels and looks the same once blended back
+        ao.setSize = (aw, ah) => GTAOPass.prototype.setSize.call(ao, Math.ceil(aw / 2), Math.ceil(ah / 2));
         c.addPass(ao);
         this.aoPass = ao;
       }
@@ -842,18 +861,12 @@ export class Board3D {
       c.addPass(this.vts);
       this.hts.enabled = this.vts.enabled = !this.top;
     }
-    c.addPass(new OutputPass());
-    this.outlinePass = null;
-    if (SETTINGS.outline) {
-      this.outlinePass = new ShaderPass(OutlineShader);
-      this.outlinePass.uniforms.tVis.value = this.maskVis.texture;
-      this.outlinePass.uniforms.tAll.value = this.maskAll.texture;
-      c.addPass(this.outlinePass);
-    }
-    const vig = new ShaderPass(VignetteShader);
-    vig.uniforms.offset.value = 0.95;
-    vig.uniforms.darkness.value = 1.05;
-    c.addPass(vig);
+    const fin = new ShaderPass(finalMaterial(SETTINGS.outline));
+    fin.uniforms.toneMappingExposure.value = this.renderer.toneMappingExposure;
+    fin.uniforms.tVis.value = this.maskVis.texture;
+    fin.uniforms.tAll.value = this.maskAll.texture;
+    c.addPass(fin);
+    this.outlinePass = SETTINGS.outline ? fin : null;
     this.resize();
   }
 
@@ -887,7 +900,7 @@ export class Board3D {
     }
   }
 
-  // masks of the player pieces (see OutlineShader / tiltShader)
+  // masks of the player pieces (see finalMaterial / tiltShader)
   renderMasks() {
     const r = this.renderer, cam = this.camera, sc = this.scene;
     const need = this.hasPieces && (this.hts || this.outlinePass);
